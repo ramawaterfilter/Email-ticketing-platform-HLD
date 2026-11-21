@@ -302,6 +302,20 @@ class KbDocument(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
+class CannedResponse(Base):
+    """A saved reply snippet an executive can insert. store_id null = shared across all stores."""
+
+    __tablename__ = "canned_response"
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
+    store_id: Mapped[int | None] = mapped_column(ForeignKey("store.id", ondelete="CASCADE"), index=True)
+    title: Mapped[str] = mapped_column(Text)
+    body_text: Mapped[str] = mapped_column(Text, default="", server_default="")
+    is_active: Mapped[bool] = mapped_column(default=True, server_default="true")
+    created_by: Mapped[int | None] = mapped_column(ForeignKey("app_user.id", ondelete="SET NULL"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
 class Suggestion(Base):
     """An LLM-drafted reply for one inbound customer message. The row doubles as the job:
     created `pending` at ingest, the worker fills it in and marks it `ready` or `failed`."""

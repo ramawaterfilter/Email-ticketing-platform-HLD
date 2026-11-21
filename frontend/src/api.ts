@@ -14,6 +14,8 @@ export type TicketEvent = components["schemas"]["EventOut"];
 export type Dashboard = components["schemas"]["Dashboard"];
 export type Suggestion = components["schemas"]["SuggestionOut"];
 export type KbDocument = components["schemas"]["KbDocumentOut"];
+export type CannedResponse = components["schemas"]["CannedResponseOut"];
+export type Report = components["schemas"]["Report"];
 export type SlaPolicy = components["schemas"]["SlaPolicyOut"];
 export type BusinessHours = components["schemas"]["BusinessHours"];
 export type AlertSettings = components["schemas"]["AlertSettings"];
@@ -66,6 +68,13 @@ export const useTicket = (id: number) =>
   });
 export const useDashboard = () =>
   useQuery({ queryKey: ["dashboard"], queryFn: () => api<Dashboard>("/dashboard"), refetchInterval: 30000 });
+export const useCanned = () =>
+  useQuery({ queryKey: ["canned"], queryFn: () => api<CannedResponse[]>("/canned") });
+export const useReport = (days: number, storeId: number | null) =>
+  useQuery({
+    queryKey: ["report", days, storeId],
+    queryFn: () => api<Report>(`/reports?days=${days}${storeId ? `&store_id=${storeId}` : ""}`),
+  });
 export const useSuggestion = (ticketId: number) =>
   useQuery({
     queryKey: ["suggestion", ticketId],

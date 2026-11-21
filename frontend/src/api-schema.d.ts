@@ -567,6 +567,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/reports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Reports */
+        get: operations["reports_api_v1_reports_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/kb": {
         parameters: {
             query?: never;
@@ -620,6 +637,42 @@ export interface paths {
         patch: operations["update_doc_api_v1_kb__doc_id__patch"];
         trace?: never;
     };
+    "/api/v1/canned": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Canned */
+        get: operations["list_canned_api_v1_canned_get"];
+        put?: never;
+        /** Create Canned */
+        post: operations["create_canned_api_v1_canned_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/canned/{canned_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete Canned */
+        delete: operations["delete_canned_api_v1_canned__canned_id__delete"];
+        options?: never;
+        head?: never;
+        /** Update Canned */
+        patch: operations["update_canned_api_v1_canned__canned_id__patch"];
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -661,6 +714,39 @@ export interface components {
             };
             /** Holidays */
             holidays?: string[];
+        };
+        /** CannedResponseIn */
+        CannedResponseIn: {
+            /** Title */
+            title: string;
+            /** Store Id */
+            store_id?: number | null;
+            /** Body Text */
+            body_text: string;
+        };
+        /** CannedResponseOut */
+        CannedResponseOut: {
+            /** Id */
+            id: number;
+            /** Store Id */
+            store_id: number | null;
+            /** Title */
+            title: string;
+            /** Body Text */
+            body_text: string;
+            /** Is Active */
+            is_active: boolean;
+        };
+        /** CannedResponsePatch */
+        CannedResponsePatch: {
+            /** Title */
+            title?: string | null;
+            /** Store Id */
+            store_id?: number | null;
+            /** Body Text */
+            body_text?: string | null;
+            /** Is Active */
+            is_active?: boolean | null;
         };
         /** Count */
         Count: {
@@ -914,6 +1000,50 @@ export interface components {
              * @enum {string}
              */
             then: "wait" | "resolve";
+        };
+        /** Report */
+        Report: {
+            /**
+             * From Date
+             * Format: date-time
+             */
+            from_date: string;
+            /**
+             * To Date
+             * Format: date-time
+             */
+            to_date: string;
+            /** Created */
+            created: number;
+            /** Resolved */
+            resolved: number;
+            /** First Response Sla Pct */
+            first_response_sla_pct: number | null;
+            /** Median First Response Min */
+            median_first_response_min: number | null;
+            /** Recoveries */
+            recoveries: number;
+            /** Ai Ready */
+            ai_ready: number;
+            /** Ai Used */
+            ai_used: number;
+            /** Ai Helpful */
+            ai_helpful: number;
+            /** Ai Not Helpful */
+            ai_not_helpful: number;
+            /** By Store */
+            by_store: components["schemas"]["ReportStoreRow"][];
+        };
+        /** ReportStoreRow */
+        ReportStoreRow: {
+            /** Id */
+            id: number;
+            /** Name */
+            name: string;
+            /** Created */
+            created: number;
+            /** Resolved */
+            resolved: number;
         };
         /** SlaPolicyIn */
         SlaPolicyIn: {
@@ -2406,6 +2536,38 @@ export interface operations {
             };
         };
     };
+    reports_api_v1_reports_get: {
+        parameters: {
+            query?: {
+                days?: number;
+                store_id?: number | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Report"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_docs_api_v1_kb_get: {
         parameters: {
             query?: never;
@@ -2543,6 +2705,123 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["KbDocumentOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_canned_api_v1_canned_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CannedResponseOut"][];
+                };
+            };
+        };
+    };
+    create_canned_api_v1_canned_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CannedResponseIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CannedResponseOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_canned_api_v1_canned__canned_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                canned_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_canned_api_v1_canned__canned_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                canned_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CannedResponsePatch"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CannedResponseOut"];
                 };
             };
             /** @description Validation Error */

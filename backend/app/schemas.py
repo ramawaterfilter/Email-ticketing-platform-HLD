@@ -329,6 +329,52 @@ class RatingIn(In):
     rating: int = Field(ge=-1, le=1)  # 1 helpful, -1 not helpful, 0 clears
 
 
+class CannedResponseOut(Out):
+    id: int
+    store_id: int | None
+    title: str
+    body_text: str
+    is_active: bool
+
+
+class CannedResponseIn(In):
+    title: str = Field(min_length=1, max_length=200)
+    store_id: int | None = None  # null = shared across all stores
+    body_text: str = Field(min_length=1, max_length=20000)
+
+
+class CannedResponsePatch(In):
+    title: str | None = Field(None, min_length=1, max_length=200)
+    store_id: int | None = None
+    body_text: str | None = Field(None, min_length=1, max_length=20000)
+    is_active: bool | None = None
+
+
+# ---- Reports (Phase 3) ----
+
+
+class ReportStoreRow(Out):
+    id: int
+    name: str
+    created: int
+    resolved: int
+
+
+class Report(Out):
+    from_date: datetime
+    to_date: datetime
+    created: int
+    resolved: int
+    first_response_sla_pct: float | None  # % of created tickets not breached; null when none
+    median_first_response_min: float | None  # wall-clock, not business minutes
+    recoveries: int  # missed emails recovered by reconciliation (mailbox-wide)
+    ai_ready: int
+    ai_used: int
+    ai_helpful: int
+    ai_not_helpful: int
+    by_store: list[ReportStoreRow]
+
+
 class LlmSettingsOut(Out):
     provider: str | None
     model: str | None

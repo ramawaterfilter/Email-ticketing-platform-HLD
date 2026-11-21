@@ -17,10 +17,12 @@ import { Link, Navigate, Outlet, Route, Routes, useLocation } from "react-router
 import { api, ApiError, useMe, type User } from "./api";
 import Board from "./pages/Board";
 import Ai from "./pages/Ai";
+import Canned from "./pages/Canned";
 import Emails from "./pages/Emails";
 import Inbox from "./pages/Inbox";
 import Kb from "./pages/Kb";
 import Login from "./pages/Login";
+import Reports from "./pages/Reports";
 import Sla from "./pages/Sla";
 import Stores from "./pages/Stores";
 import TicketView from "./pages/TicketView";
@@ -41,12 +43,18 @@ function Shell({ user }: { user: User }) {
   const { pathname } = useLocation();
   const links = [
     { to: "/", label: "Tickets" },
-    ...(user.role === "manager" || user.role === "admin" ? [{ to: "/board", label: "Board" }] : []),
+    ...(user.role === "manager" || user.role === "admin"
+      ? [
+          { to: "/board", label: "Board" },
+          { to: "/reports", label: "Reports" },
+        ]
+      : []),
     ...(user.role === "admin"
       ? [
           { to: "/admin/emails", label: "Email accounts" },
           { to: "/admin/stores", label: "Stores" },
           { to: "/admin/kb", label: "Knowledge base" },
+          { to: "/admin/canned", label: "Canned responses" },
           { to: "/admin/ai", label: "AI assistant" },
           { to: "/admin/users", label: "People" },
           { to: "/admin/sla", label: "SLA & alerts" },
@@ -114,12 +122,18 @@ export default function App() {
       <Route element={user ? <Shell user={user} /> : <Navigate to="/login" replace />}>
         <Route index element={<Inbox />} />
         <Route path="tickets/:id" element={<TicketView />} />
-        {(user?.role === "manager" || user?.role === "admin") && <Route path="board" element={<Board />} />}
+        {(user?.role === "manager" || user?.role === "admin") && (
+          <>
+            <Route path="board" element={<Board />} />
+            <Route path="reports" element={<Reports />} />
+          </>
+        )}
         {user?.role === "admin" && (
           <>
             <Route path="admin/emails" element={<Emails />} />
             <Route path="admin/stores" element={<Stores />} />
             <Route path="admin/kb" element={<Kb />} />
+            <Route path="admin/canned" element={<Canned />} />
             <Route path="admin/ai" element={<Ai />} />
             <Route path="admin/users" element={<Users />} />
             <Route path="admin/sla" element={<Sla />} />

@@ -26,6 +26,7 @@ import {
   type Suggestion,
   type TicketDetail,
   type TicketMessage,
+  useCanned,
   useMe,
   useStores,
   useSuggestion,
@@ -139,6 +140,15 @@ function Composer({
 }) {
   const queryClient = useQueryClient();
   const [note, setNote] = useState("");
+  const canned = useCanned();
+  // Snippets for this ticket's store, plus shared ones.
+  const cannedOptions = (canned.data ?? [])
+    .filter((c) => c.is_active && (c.store_id === null || c.store_id === ticket.store_id))
+    .map((c) => ({ value: String(c.id), label: c.title }));
+  const insertCanned = (id: string | null) => {
+    const c = canned.data?.find((x) => String(x.id) === id);
+    if (c) setReply(reply ? `${reply.trimEnd()}\n\n${c.body_text}` : c.body_text);
+  };
   // One request id per compose session makes Send safe to retry (no duplicate email).
   const requestId = useMemo(() => crypto.randomUUID(), [ticket.id]);
   const lastSeen = useMemo(
@@ -187,6 +197,17 @@ function Composer({
               </Alert>
             )}
             {send.isError && !staleError && <Alert color="red">{send.error.message}</Alert>}
+            {cannedOptions.length > 0 && (
+              <Select
+                size="xs"
+                maw={260}
+                placeholder="Insert canned response…"
+                data={cannedOptions}
+                value={null}
+                searchable
+                onChange={insertCanned}
+              />
+            )}
             <Textarea
               autosize
               minRows={5}
