@@ -258,7 +258,17 @@ def _change_store(db: Session, t: Ticket, store_id: int, user: AppUser) -> None:
 
 @router.get("/tickets/{ticket_id}/suggestion", response_model=SuggestionOut | None)
 def get_suggestion(ticket_id: int, db: Session = Depends(get_db), user: AppUser = Depends(current_user)):
-    """The LLM draft for the newest customer message on this ticket (null if none yet)."""
+    """The LLM draft for the newest customer message on this ticket.
+
+    On-demand: if the ticket has no draft yet and the AI is enabled, opening it
+    queues one here (the worker fills it in; the client polls while it is pending).
+    New inbound mail already queues a draft at ingest, so this only backfills the
+    tickets an agent actually opens.
+    """
+    from sqlalchemy.exc import IntegrityError
+
+    from ..llm import is_enabled
+
     t = _visible(db, user, ticket_id)
     last_inbound = db.scalar(
         select(Message.id)
@@ -268,7 +278,18 @@ def get_suggestion(ticket_id: int, db: Session = Depends(get_db), user: AppUser 
     )
     if last_inbound is None:
         return None
-    return db.scalar(select(Suggestion).where(Suggestion.message_id == last_inbound))
+    existing = db.scalar(select(Suggestion).where(Suggestion.message_id == last_inbound))
+    if existing is not None or not is_enabled(db):
+        return existing
+    suggestion = Suggestion(message_id=last_inbound, ticket_id=t.id, store_id=t.store_id, status="pending")
+    db.add(suggestion)
+    try:
+        db.commit()
+    except IntegrityError:  # a concurrent open queued it first
+        db.rollback()
+        return db.scalar(select(Suggestion).where(Suggestion.message_id == last_inbound))
+    db.refresh(suggestion)
+    return suggestion
 
 
 @router.post("/tickets/{ticket_id}/suggestion/{suggestion_id}/rating", response_model=SuggestionOut)
