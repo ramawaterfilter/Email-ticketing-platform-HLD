@@ -69,6 +69,7 @@ def _dispatch(db: Session, ticket: Ticket, mailbox: Mailbox, message: Message, r
 
     from ..tickets import sla
 
+    _record_sent_for_feedback(db, ticket, message.body_text)
     ticket.last_agent_message_at = _now()
     if ticket.first_responded_at is None:
         ticket.first_responded_at = _now()
@@ -143,6 +144,24 @@ def retry_reply(db: Session, ticket: Ticket, message: Message, client) -> Messag
     message.send_status = "sending"
     db.commit()
     return _dispatch(db, ticket, mailbox, message, resolve=(ticket.status == "resolved"), client=client)
+
+
+def _record_sent_for_feedback(db: Session, ticket: Ticket, sent_body: str) -> None:
+    """Save what the agent actually sent against the draft for the latest customer message,
+    so suggestion quality can be measured (draft vs. final)."""
+    from ..models import Suggestion
+
+    last_inbound = db.scalar(
+        select(Message.id)
+        .where(Message.ticket_id == ticket.id, Message.direction == "inbound")
+        .order_by(Message.id.desc())
+        .limit(1)
+    )
+    if last_inbound is None:
+        return
+    suggestion = db.scalar(select(Suggestion).where(Suggestion.message_id == last_inbound))
+    if suggestion is not None and suggestion.final_sent_text is None:
+        suggestion.final_sent_text = sent_body
 
 
 def _reply_subject(subject: str) -> str:

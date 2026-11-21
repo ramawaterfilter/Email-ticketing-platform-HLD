@@ -2,7 +2,9 @@
 
 Gmail → tickets → LLM-assisted replies. Design: [docs/HLD.md](docs/HLD.md), [docs/LLD-phase1.md](docs/LLD-phase1.md).
 
-**Status:** Phase 1 complete (milestones 1–5). Done: sign-in, stores and people admin (M1); Gmail sync, ingestion, reconciliation, ticketing, auto-assignment, email→store mapping (M2); ticket inbox, ticket view, replies, internal notes, dark mode (M3); SLA clocks in business hours, escalation and sync-health alerts, manager board, SLA/alerts admin (M4); backfill on connect, sync-health endpoint, production config guard, backups and a deployment guide (M5). Deploy with **[docs/DEPLOY.md](docs/DEPLOY.md)**. Next (product Phase 2): LLM-suggested replies per store.
+**Status:** Phase 1 complete (milestones 1–5). Done: sign-in, stores and people admin (M1); Gmail sync, ingestion, reconciliation, ticketing, auto-assignment, email→store mapping (M2); ticket inbox, ticket view, replies, internal notes, dark mode (M3); SLA clocks in business hours, escalation and sync-health alerts, manager board, SLA/alerts admin (M4); backfill on connect, sync-health endpoint, production config guard, backups and a deployment guide (M5). Deploy with **[docs/DEPLOY.md](docs/DEPLOY.md)**.
+
+**Phase 2 (complete):** LLM-suggested replies per store. Knowledge base (upload/paste docs tagged per store or shared), per-store AI guidance, and a draft generated for each customer message from that store's own policies **plus** the customer's Shopify orders (looked up by their email only) and the most similar past resolved tickets from the same store. Shown in the ticket view with "Use this draft" and a 👍/👎 feedback loop. **Any LLM works:** connect Claude, or any OpenAI-compatible provider (ChatGPT, NVIDIA NIM, OpenRouter, Groq, a local model via Ollama, …) from **Admin → AI assistant** (provider, model, base URL, API key, with a Test button). `DESK_ANTHROPIC_API_KEY` in `.env` still works as a fallback. Connect each store's Shopify from the store editor (needs a custom-app token with read_orders / read_customers).
 
 ## Run locally
 

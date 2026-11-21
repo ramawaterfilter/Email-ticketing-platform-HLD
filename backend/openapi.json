@@ -614,6 +614,85 @@
         }
       }
     },
+    "/api/v1/settings/llm": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Get Llm",
+        "operationId": "get_llm_api_v1_settings_llm_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LlmSettingsOut"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Put Llm",
+        "operationId": "put_llm_api_v1_settings_llm_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LlmSettingsIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LlmSettingsOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/settings/llm/test": {
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Test Llm",
+        "operationId": "test_llm_api_v1_settings_llm_test_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/mailboxes": {
       "get": {
         "tags": [
@@ -633,6 +712,25 @@
                   "type": "array",
                   "title": "Response List Mailboxes Api V1 Mailboxes Get"
                 }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/mailboxes/connect": {
+      "get": {
+        "tags": [
+          "mailboxes"
+        ],
+        "summary": "Connect",
+        "operationId": "connect_api_v1_mailboxes_connect_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
               }
             }
           }
@@ -844,25 +942,6 @@
                 "schema": {
                   "$ref": "#/components/schemas/HTTPValidationError"
                 }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/mailboxes/connect": {
-      "get": {
-        "tags": [
-          "mailboxes"
-        ],
-        "summary": "Connect",
-        "operationId": "connect_api_v1_mailboxes_connect_get",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
               }
             }
           }
@@ -1144,6 +1223,118 @@
         }
       }
     },
+    "/api/v1/tickets/{ticket_id}/suggestion": {
+      "get": {
+        "tags": [
+          "tickets"
+        ],
+        "summary": "Get Suggestion",
+        "description": "The LLM draft for the newest customer message on this ticket (null if none yet).",
+        "operationId": "get_suggestion_api_v1_tickets__ticket_id__suggestion_get",
+        "parameters": [
+          {
+            "name": "ticket_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Ticket Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/SuggestionOut"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "title": "Response Get Suggestion Api V1 Tickets  Ticket Id  Suggestion Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/tickets/{ticket_id}/suggestion/{suggestion_id}/rating": {
+      "post": {
+        "tags": [
+          "tickets"
+        ],
+        "summary": "Rate Suggestion",
+        "operationId": "rate_suggestion_api_v1_tickets__ticket_id__suggestion__suggestion_id__rating_post",
+        "parameters": [
+          {
+            "name": "ticket_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Ticket Id"
+            }
+          },
+          {
+            "name": "suggestion_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Suggestion Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RatingIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuggestionOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/tickets/{ticket_id}/notes": {
       "post": {
         "tags": [
@@ -1359,6 +1550,196 @@
           }
         }
       }
+    },
+    "/api/v1/kb": {
+      "get": {
+        "tags": [
+          "kb"
+        ],
+        "summary": "List Docs",
+        "operationId": "list_docs_api_v1_kb_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/KbDocumentOut"
+                  },
+                  "type": "array",
+                  "title": "Response List Docs Api V1 Kb Get"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "kb"
+        ],
+        "summary": "Create Doc",
+        "operationId": "create_doc_api_v1_kb_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/KbDocumentIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KbDocumentOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/kb/upload": {
+      "post": {
+        "tags": [
+          "kb"
+        ],
+        "summary": "Upload Doc",
+        "operationId": "upload_doc_api_v1_kb_upload_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_upload_doc_api_v1_kb_upload_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KbDocumentOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/kb/{doc_id}": {
+      "patch": {
+        "tags": [
+          "kb"
+        ],
+        "summary": "Update Doc",
+        "operationId": "update_doc_api_v1_kb__doc_id__patch",
+        "parameters": [
+          {
+            "name": "doc_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Doc Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/KbDocumentPatch"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KbDocumentOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "kb"
+        ],
+        "summary": "Delete Doc",
+        "operationId": "delete_doc_api_v1_kb__doc_id__delete",
+        "parameters": [
+          {
+            "name": "doc_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Doc Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -1417,6 +1798,36 @@
           "size_bytes"
         ],
         "title": "AttachmentOut"
+      },
+      "Body_upload_doc_api_v1_kb_upload_post": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "File"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "store_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Store Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "file",
+          "title"
+        ],
+        "title": "Body_upload_doc_api_v1_kb_upload_post"
       },
       "BusinessHours": {
         "properties": {
@@ -1603,6 +2014,139 @@
         "type": "object",
         "title": "HTTPValidationError"
       },
+      "KbDocumentIn": {
+        "properties": {
+          "title": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Title"
+          },
+          "store_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Store Id"
+          },
+          "body_text": {
+            "type": "string",
+            "maxLength": 500000,
+            "title": "Body Text",
+            "default": ""
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "title"
+        ],
+        "title": "KbDocumentIn"
+      },
+      "KbDocumentOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "store_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Store Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "filename": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Filename"
+          },
+          "is_active": {
+            "type": "boolean",
+            "title": "Is Active"
+          },
+          "char_count": {
+            "type": "integer",
+            "title": "Char Count"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "store_id",
+          "title",
+          "filename",
+          "is_active",
+          "char_count",
+          "created_at"
+        ],
+        "title": "KbDocumentOut"
+      },
+      "KbDocumentPatch": {
+        "properties": {
+          "title": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 200,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "store_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Store Id"
+          },
+          "is_active": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Active"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "KbDocumentPatch"
+      },
       "LinkedTicket": {
         "properties": {
           "id": {
@@ -1630,6 +2174,125 @@
           "status"
         ],
         "title": "LinkedTicket"
+      },
+      "LlmSettingsIn": {
+        "properties": {
+          "provider": {
+            "type": "string",
+            "enum": [
+              "anthropic",
+              "openai"
+            ],
+            "title": "Provider"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          },
+          "base_url": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 300
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Base Url"
+          },
+          "api_key": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Api Key"
+          },
+          "apply_priority": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Apply Priority"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "provider"
+        ],
+        "title": "LlmSettingsIn"
+      },
+      "LlmSettingsOut": {
+        "properties": {
+          "provider": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          },
+          "base_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Base Url"
+          },
+          "configured": {
+            "type": "boolean",
+            "title": "Configured"
+          },
+          "apply_priority": {
+            "type": "boolean",
+            "title": "Apply Priority"
+          }
+        },
+        "type": "object",
+        "required": [
+          "provider",
+          "model",
+          "base_url",
+          "configured",
+          "apply_priority"
+        ],
+        "title": "LlmSettingsOut"
       },
       "MailboxDetail": {
         "properties": {
@@ -1986,6 +2649,22 @@
         ],
         "title": "NoteIn"
       },
+      "RatingIn": {
+        "properties": {
+          "rating": {
+            "type": "integer",
+            "maximum": 1.0,
+            "minimum": -1.0,
+            "title": "Rating"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "rating"
+        ],
+        "title": "RatingIn"
+      },
       "ReplyIn": {
         "properties": {
           "body_text": {
@@ -2126,6 +2805,36 @@
             "maxLength": 5000,
             "title": "Signature Text",
             "default": ""
+          },
+          "ai_guidance": {
+            "type": "string",
+            "maxLength": 20000,
+            "title": "Ai Guidance",
+            "default": ""
+          },
+          "shopify_domain": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 255
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shopify Domain"
+          },
+          "shopify_token": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shopify Token"
           }
         },
         "additionalProperties": false,
@@ -2152,6 +2861,25 @@
           "signature_text": {
             "type": "string",
             "title": "Signature Text"
+          },
+          "ai_guidance": {
+            "type": "string",
+            "title": "Ai Guidance"
+          },
+          "shopify_domain": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shopify Domain"
+          },
+          "shopify_connected": {
+            "type": "boolean",
+            "title": "Shopify Connected"
           }
         },
         "type": "object",
@@ -2159,7 +2887,10 @@
           "id",
           "name",
           "is_active",
-          "signature_text"
+          "signature_text",
+          "ai_guidance",
+          "shopify_domain",
+          "shopify_connected"
         ],
         "title": "StoreOut"
       },
@@ -2190,6 +2921,18 @@
             ],
             "title": "Signature Text"
           },
+          "ai_guidance": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 20000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ai Guidance"
+          },
           "is_active": {
             "anyOf": [
               {
@@ -2200,11 +2943,152 @@
               }
             ],
             "title": "Is Active"
+          },
+          "shopify_domain": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 255
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shopify Domain"
+          },
+          "shopify_token": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shopify Token"
           }
         },
         "additionalProperties": false,
         "type": "object",
         "title": "StorePatch"
+      },
+      "SuggestionOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "message_id": {
+            "type": "integer",
+            "title": "Message Id"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category"
+          },
+          "priority": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Priority"
+          },
+          "sentiment": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sentiment"
+          },
+          "language": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Language"
+          },
+          "summary": {
+            "type": "string",
+            "title": "Summary"
+          },
+          "suggested_reply": {
+            "type": "string",
+            "title": "Suggested Reply"
+          },
+          "missing_info": {
+            "items": {},
+            "type": "array",
+            "title": "Missing Info"
+          },
+          "documents_used": {
+            "items": {},
+            "type": "array",
+            "title": "Documents Used"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "rating": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rating"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "message_id",
+          "status",
+          "category",
+          "priority",
+          "sentiment",
+          "language",
+          "summary",
+          "suggested_reply",
+          "missing_info",
+          "documents_used",
+          "error",
+          "rating"
+        ],
+        "title": "SuggestionOut"
       },
       "SupportAddressOut": {
         "properties": {

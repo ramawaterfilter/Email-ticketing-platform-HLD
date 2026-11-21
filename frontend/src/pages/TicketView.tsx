@@ -20,7 +20,18 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router";
 
-import { api, ApiError, type TicketDetail, type TicketMessage, useMe, useStores, useTicket, useUsers } from "../api";
+import {
+  api,
+  ApiError,
+  type Suggestion,
+  type TicketDetail,
+  type TicketMessage,
+  useMe,
+  useStores,
+  useSuggestion,
+  useTicket,
+  useUsers,
+} from "../api";
 
 const STATUSES = ["new", "open", "waiting_customer", "resolved", "closed"];
 const PRIORITIES = ["low", "normal", "high", "urgent"];
@@ -38,6 +49,9 @@ export default function TicketView() {
 function Loaded({ t }: { t: TicketDetail }) {
   const me = useMe();
   const queryClient = useQueryClient();
+  const draftKey = `draft:${t.id}`;
+  const [reply, setReply] = useState(() => localStorage.getItem(draftKey) ?? "");
+  useEffect(() => localStorage.setItem(draftKey, reply), [reply, draftKey]);
   const refresh = () => queryClient.invalidateQueries({ queryKey: ["ticket", t.id] });
   const patch = useMutation({
     mutationFn: (body: object) => api(`/tickets/${t.id}`, "PATCH", body),
@@ -63,7 +77,8 @@ function Loaded({ t }: { t: TicketDetail }) {
       <Group align="flex-start" grow wrap="nowrap">
         <Stack style={{ flex: 2 }}>
           <Thread messages={t.messages} />
-          <Composer ticket={t} onDone={refresh} />
+          <SuggestionPanel ticketId={t.id} onUse={(text) => setReply(text)} />
+          <Composer ticket={t} reply={reply} setReply={setReply} draftKey={draftKey} onDone={refresh} />
         </Stack>
         <SidePanel ticket={t} meRole={me.data?.role} meId={me.data?.id} patch={patch.mutate} />
       </Group>
@@ -109,10 +124,20 @@ function Thread({ messages }: { messages: TicketMessage[] }) {
   );
 }
 
-function Composer({ ticket, onDone }: { ticket: TicketDetail; onDone: () => void }) {
+function Composer({
+  ticket,
+  reply,
+  setReply,
+  draftKey,
+  onDone,
+}: {
+  ticket: TicketDetail;
+  reply: string;
+  setReply: (v: string) => void;
+  draftKey: string;
+  onDone: () => void;
+}) {
   const queryClient = useQueryClient();
-  const draftKey = `draft:${ticket.id}`;
-  const [reply, setReply] = useState(() => localStorage.getItem(draftKey) ?? "");
   const [note, setNote] = useState("");
   // One request id per compose session makes Send safe to retry (no duplicate email).
   const requestId = useMemo(() => crypto.randomUUID(), [ticket.id]);
@@ -120,8 +145,6 @@ function Composer({ ticket, onDone }: { ticket: TicketDetail; onDone: () => void
     () => ticket.messages.filter((m) => m.direction === "inbound").map((m) => m.id).at(-1) ?? null,
     [ticket.messages],
   );
-
-  useEffect(() => localStorage.setItem(draftKey, reply), [reply, draftKey]);
 
   const send = useMutation({
     mutationFn: (then: "wait" | "resolve") =>
@@ -210,6 +233,95 @@ function Composer({ ticket, onDone }: { ticket: TicketDetail; onDone: () => void
         </Tabs.Panel>
       </Tabs>
     </Card>
+  );
+}
+
+const SENTIMENT_COLOR: Record<string, string> = { positive: "green", neutral: "gray", negative: "red" };
+
+function SuggestionPanel({ ticketId, onUse }: { ticketId: number; onUse: (text: string) => void }) {
+  const suggestion = useSuggestion(ticketId);
+  const queryClient = useQueryClient();
+  const rate = useMutation({
+    mutationFn: (v: { sid: number; rating: number }) =>
+      api(`/tickets/${ticketId}/suggestion/${v.sid}/rating`, "POST", { rating: v.rating }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["suggestion", ticketId] }),
+  });
+
+  const s: Suggestion | null | undefined = suggestion.data;
+  if (!s) return null; // LLM off, or no customer message yet
+
+  return (
+    <Card withBorder bg="var(--mantine-color-blue-light)">
+      <Group justify="space-between" mb="xs">
+        <Group gap="xs">
+          <Text fw={600}>Suggested reply</Text>
+          <Badge size="xs" variant="light">
+            AI draft — review before sending
+          </Badge>
+        </Group>
+        {s.status === "ready" && (
+          <Group gap={4}>
+            <ActionButton active={s.rating === 1} label="👍" onClick={() => rate.mutate({ sid: s.id, rating: s.rating === 1 ? 0 : 1 })} />
+            <ActionButton active={s.rating === -1} label="👎" onClick={() => rate.mutate({ sid: s.id, rating: s.rating === -1 ? 0 : -1 })} />
+          </Group>
+        )}
+      </Group>
+
+      {s.status === "pending" && (
+        <Group gap="xs">
+          <Loader size="xs" />
+          <Text size="sm" c="dimmed">
+            Drafting a suggestion…
+          </Text>
+        </Group>
+      )}
+      {s.status === "failed" && <Text size="sm" c="dimmed">No suggestion available for this message.</Text>}
+
+      {s.status === "ready" && (
+        <Stack gap="xs">
+          {s.summary && (
+            <Text size="sm" c="dimmed">
+              {s.summary}
+            </Text>
+          )}
+          <Group gap={6}>
+            {s.category && <Badge size="xs" variant="outline">{s.category}</Badge>}
+            {s.priority && <Badge size="xs" variant="outline">{s.priority}</Badge>}
+            {s.sentiment && (
+              <Badge size="xs" color={SENTIMENT_COLOR[s.sentiment] ?? "gray"}>
+                {s.sentiment}
+              </Badge>
+            )}
+          </Group>
+          <Text size="sm" style={{ whiteSpace: "pre-wrap" }}>
+            {s.suggested_reply}
+          </Text>
+          {s.missing_info.length > 0 && (
+            <Alert color="yellow" p="xs">
+              Still needed: {(s.missing_info as string[]).join("; ")}
+            </Alert>
+          )}
+          <Group justify="space-between">
+            <Text size="xs" c="dimmed">
+              {s.documents_used.length
+                ? `Based on: ${(s.documents_used as { title: string }[]).map((d) => d.title).join(", ")}`
+                : "No store documents were used."}
+            </Text>
+            <Button size="xs" onClick={() => onUse(s.suggested_reply)}>
+              Use this draft
+            </Button>
+          </Group>
+        </Stack>
+      )}
+    </Card>
+  );
+}
+
+function ActionButton({ active, label, onClick }: { active: boolean; label: string; onClick: () => void }) {
+  return (
+    <Button size="compact-xs" variant={active ? "filled" : "subtle"} onClick={onClick}>
+      {label}
+    </Button>
   );
 }
 

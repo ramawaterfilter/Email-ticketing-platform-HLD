@@ -11,6 +11,8 @@ from ..models import AppUser, Setting, SlaPolicy, Store
 from ..schemas import (
     AlertSettings,
     BusinessHours,
+    LlmSettingsIn,
+    LlmSettingsOut,
     SlaPolicyIn,
     SlaPolicyOut,
     StoreIn,
@@ -45,9 +47,24 @@ def list_stores(db: Session = Depends(get_db), _: AppUser = Depends(current_user
     return db.scalars(select(Store).order_by(Store.name)).all()
 
 
+def _apply_shopify(store: Store, data: dict) -> None:
+    """Encrypt and store a Shopify token; an explicit empty token clears the connection."""
+    if "shopify_domain" in data:
+        store.shopify_domain = (data.pop("shopify_domain") or "").strip() or None
+    if "shopify_token" in data:
+        from ..crypto import encrypt
+
+        token = (data.pop("shopify_token") or "").strip()
+        store.shopify_token_enc = encrypt(token) if token else None
+
+
 @router.post("/stores", response_model=StoreOut, status_code=201, dependencies=[Depends(admin)])
 def create_store(body: StoreIn, db: Session = Depends(get_db)):
-    store = Store(**body.model_dump())
+    data = body.model_dump()
+    store = Store()
+    _apply_shopify(store, data)
+    for field, value in data.items():
+        setattr(store, field, value)
     db.add(store)
     _commit(db, "store_exists", "A store with this name already exists")
     return store
@@ -58,8 +75,11 @@ def update_store(store_id: int, body: StorePatch, db: Session = Depends(get_db))
     store = db.get(Store, store_id)
     if store is None:
         raise ApiError(404, "not_found", "Store not found")
-    for field, value in body.model_dump(exclude_none=True).items():
-        setattr(store, field, value)
+    data = body.model_dump(exclude_unset=True)
+    _apply_shopify(store, data)
+    for field, value in data.items():
+        if value is not None:
+            setattr(store, field, value)
     _commit(db, "store_exists", "A store with this name already exists")
     return store
 
@@ -174,3 +194,57 @@ def get_alerts(db: Session = Depends(get_db)):
 def put_alerts(body: AlertSettings, db: Session = Depends(get_db)):
     _put_setting(db, "alerts", body.model_dump())
     return body
+
+
+# ---- AI provider (LLM) settings (Phase 2) ----
+
+
+@router.get("/settings/llm", response_model=LlmSettingsOut, dependencies=[Depends(admin)])
+def get_llm(db: Session = Depends(get_db)):
+    from ..llm import get_config
+
+    row = db.get(Setting, "llm")
+    v = row.value if row and row.value else {}
+    cfg = get_config(db)
+    return LlmSettingsOut(
+        provider=v.get("provider") or (cfg.provider if cfg else None),
+        model=v.get("model") or (cfg.model if cfg else None),
+        base_url=v.get("base_url"),
+        configured=cfg is not None,
+        apply_priority=v.get("apply_priority", True),
+    )
+
+
+@router.put("/settings/llm", response_model=LlmSettingsOut, dependencies=[Depends(admin)])
+def put_llm(body: LlmSettingsIn, db: Session = Depends(get_db)):
+    from ..crypto import encrypt
+
+    row = db.get(Setting, "llm")
+    v = dict(row.value) if row and row.value else {}
+    v["provider"] = body.provider
+    v["model"] = (body.model or "").strip() or None
+    v["base_url"] = (body.base_url or "").strip() or None
+    if body.api_key is not None:  # None = keep existing; "" = clear
+        key = body.api_key.strip()
+        v["api_key_enc"] = encrypt(key) if key else None
+    if body.apply_priority is not None:
+        v["apply_priority"] = body.apply_priority
+    _put_setting(db, "llm", v)
+    return get_llm(db)
+
+
+@router.post("/settings/llm/test", dependencies=[Depends(admin)])
+def test_llm(db: Session = Depends(get_db)):
+    from ..llm import build_suggester
+
+    suggester = build_suggester(db)
+    if suggester is None:
+        raise ApiError(400, "not_configured", "Choose a provider and enter an API key first")
+    try:
+        result = suggester.suggest(
+            system=[{"type": "text", "text": "You are a connection test for a support desk."}],
+            user_text="A customer said: 'hello'. Draft a one-sentence friendly reply.",
+        )
+        return {"ok": True, "sample": result.suggested_reply[:160]}
+    except Exception as exc:  # noqa: BLE001
+        raise ApiError(400, "test_failed", f"The provider rejected the request: {str(exc)[:200]}")

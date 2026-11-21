@@ -12,6 +12,8 @@ export type TicketDetail = components["schemas"]["TicketDetail"];
 export type TicketMessage = components["schemas"]["MessageOut"];
 export type TicketEvent = components["schemas"]["EventOut"];
 export type Dashboard = components["schemas"]["Dashboard"];
+export type Suggestion = components["schemas"]["SuggestionOut"];
+export type KbDocument = components["schemas"]["KbDocumentOut"];
 export type SlaPolicy = components["schemas"]["SlaPolicyOut"];
 export type BusinessHours = components["schemas"]["BusinessHours"];
 export type AlertSettings = components["schemas"]["AlertSettings"];
@@ -64,3 +66,10 @@ export const useTicket = (id: number) =>
   });
 export const useDashboard = () =>
   useQuery({ queryKey: ["dashboard"], queryFn: () => api<Dashboard>("/dashboard"), refetchInterval: 30000 });
+export const useSuggestion = (ticketId: number) =>
+  useQuery({
+    queryKey: ["suggestion", ticketId],
+    queryFn: () => api<Suggestion | null>(`/tickets/${ticketId}/suggestion`),
+    // Suggestions are generated asynchronously; keep polling while one is still pending.
+    refetchInterval: (q) => (q.state.data?.status === "pending" ? 5000 : false),
+  });

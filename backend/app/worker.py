@@ -70,6 +70,34 @@ def run_sla_once() -> None:
             db.rollback()
 
 
+SUGGESTIONS_PER_TICK = 10
+
+
+def run_suggestions_once(factory=None) -> int:
+    """Fill in pending LLM suggestions. Returns how many were processed this tick."""
+    from .llm import build_suggester, generate_suggestion
+    from .models import Suggestion
+
+    done = 0
+    with SessionLocal() as db:
+        pending = db.scalars(
+            select(Suggestion).where(Suggestion.status == "pending").order_by(Suggestion.id).limit(SUGGESTIONS_PER_TICK)
+        ).all()
+        if not pending:
+            return 0
+        try:
+            suggester = (factory or (lambda: build_suggester(db)))()  # one client per tick, from saved config
+        except Exception:  # noqa: BLE001 - misconfigured key etc.; leave them pending
+            log.exception("could not create LLM client")
+            return 0
+        if suggester is None:  # no provider configured
+            return 0
+        for suggestion in pending:
+            generate_suggestion(db, suggestion, suggester)
+            done += 1
+    return done
+
+
 def run_reconcile_once(factory=client_for) -> int:
     recovered = 0
     with SessionLocal() as db:
@@ -91,6 +119,7 @@ def main() -> None:  # pragma: no cover - the loop itself is not unit-tested
     while True:
         run_sync_once()
         run_sla_once()  # SLA warnings/breaches, unassigned alerts, auto-close, sync health
+        run_suggestions_once()  # fill in pending LLM reply drafts
         now = datetime.now(timezone.utc)
         if now.time() >= RECONCILE_AT and last_reconcile_date != now.date():
             log.info("nightly reconciliation")

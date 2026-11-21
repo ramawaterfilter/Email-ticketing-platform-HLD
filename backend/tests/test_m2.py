@@ -258,6 +258,20 @@ def test_reconcile_relabels_a_message_that_lost_its_label(setup):
     assert gmail.label_calls == ["m1"]
 
 
+def test_connect_route_is_not_shadowed_by_mailbox_id():
+    # Regression: /mailboxes/connect must reach the connect handler, not be parsed as a
+    # mailbox id (which gave a 422 int-parse error). It redirects to Google (307) when
+    # configured, or returns 400 "google_not_configured" when not - never 422.
+    from fastapi.testclient import TestClient
+
+    from app.main import app
+
+    c = TestClient(app, headers={"X-Requested-With": "desk"}, follow_redirects=False)
+    c.post("/api/v1/auth/dev-login", json={"email": "boss@example.com"})
+    r = c.get("/api/v1/mailboxes/connect")
+    assert r.status_code in (307, 400) and r.status_code != 422
+
+
 def test_html_body_and_customer_name_are_captured(setup):
     db, mailbox, store, _ = setup
     do_ingest(db, mailbox, build_message("m1", from_name="Priya", body_html="<p>Hi</p>"))

@@ -11,7 +11,8 @@ from datetime import datetime, timezone
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from ..models import Attachment, Customer, Mailbox, Message, SupportAddress, Ticket, TicketEvent
+from ..config import settings
+from ..models import Attachment, Customer, Mailbox, Message, SupportAddress, Suggestion, Ticket, TicketEvent
 from ..tickets.assignment import pick_assignee
 from .mime import Parsed
 
@@ -128,6 +129,11 @@ def ingest(db: Session, mailbox: Mailbox, parsed: Parsed) -> Message:
         _apply_bounce(db, ticket)
     elif direction == "inbound" and ticket.queue == "customer":
         _apply_inbound_customer(db, ticket, parsed, new_ticket, prior_status)
+        # Queue an LLM draft for this message; the worker fills it in (HLD 4.4).
+        from ..llm import is_enabled
+
+        if not is_bounce and is_enabled(db):
+            db.add(Suggestion(message_id=message.id, ticket_id=ticket.id, store_id=ticket.store_id))
     elif direction == "outbound":
         _apply_outbound(db, ticket, parsed)
 

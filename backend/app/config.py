@@ -23,7 +23,14 @@ class Settings(BaseSettings):
     token_key: str = ""  # Fernet key (DESK_TOKEN_KEY) that encrypts stored Gmail refresh tokens
     reconcile_window_days: int = 14  # how far back the nightly safety-net check looks
 
+    anthropic_api_key: str = ""  # DESK_ANTHROPIC_API_KEY; enables LLM reply suggestions
+    llm_model: str = "claude-opus-5-5"
+
     dev_login_enabled: bool = False
+
+    @property
+    def llm_enabled(self) -> bool:
+        return bool(self.anthropic_api_key)
 
     @property
     def domains(self) -> set[str]:

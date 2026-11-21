@@ -1,5 +1,7 @@
 import os
 
+from cryptography.fernet import Fernet
+
 # Must be set before anything from `app` is imported. Tests use their own database.
 SERVER = "postgresql+psycopg://desk:desk@127.0.0.1:5432"
 os.environ.update(
@@ -9,6 +11,8 @@ os.environ.update(
     DESK_ALLOWED_DOMAINS="example.com",
     DESK_BOOTSTRAP_ADMIN_EMAIL="boss@example.com",
     DESK_DEV_LOGIN_ENABLED="true",
+    DESK_TOKEN_KEY=Fernet.generate_key().decode(),
+    DESK_ANTHROPIC_API_KEY="",  # deterministic: LLM is off unless a test configures it
 )
 
 import pytest  # noqa: E402

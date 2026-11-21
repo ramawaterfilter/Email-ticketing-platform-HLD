@@ -16,8 +16,10 @@ import { Link, Navigate, Outlet, Route, Routes, useLocation } from "react-router
 
 import { api, ApiError, useMe, type User } from "./api";
 import Board from "./pages/Board";
+import Ai from "./pages/Ai";
 import Emails from "./pages/Emails";
 import Inbox from "./pages/Inbox";
+import Kb from "./pages/Kb";
 import Login from "./pages/Login";
 import Sla from "./pages/Sla";
 import Stores from "./pages/Stores";
@@ -44,6 +46,8 @@ function Shell({ user }: { user: User }) {
       ? [
           { to: "/admin/emails", label: "Email accounts" },
           { to: "/admin/stores", label: "Stores" },
+          { to: "/admin/kb", label: "Knowledge base" },
+          { to: "/admin/ai", label: "AI assistant" },
           { to: "/admin/users", label: "People" },
           { to: "/admin/sla", label: "SLA & alerts" },
         ]
@@ -115,6 +119,8 @@ export default function App() {
           <>
             <Route path="admin/emails" element={<Emails />} />
             <Route path="admin/stores" element={<Stores />} />
+            <Route path="admin/kb" element={<Kb />} />
+            <Route path="admin/ai" element={<Ai />} />
             <Route path="admin/users" element={<Users />} />
             <Route path="admin/sla" element={<Sla />} />
           </>

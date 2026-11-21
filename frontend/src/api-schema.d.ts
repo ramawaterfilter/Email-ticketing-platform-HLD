@@ -255,6 +255,41 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/settings/llm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Llm */
+        get: operations["get_llm_api_v1_settings_llm_get"];
+        /** Put Llm */
+        put: operations["put_llm_api_v1_settings_llm_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/settings/llm/test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Test Llm */
+        post: operations["test_llm_api_v1_settings_llm_test_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/mailboxes": {
         parameters: {
             query?: never;
@@ -264,6 +299,23 @@ export interface paths {
         };
         /** List Mailboxes */
         get: operations["list_mailboxes_api_v1_mailboxes_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/mailboxes/connect": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Connect */
+        get: operations["connect_api_v1_mailboxes_connect_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -341,23 +393,6 @@ export interface paths {
         patch: operations["update_address_api_v1_support_addresses__address_id__patch"];
         trace?: never;
     };
-    "/api/v1/mailboxes/connect": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Connect */
-        get: operations["connect_api_v1_mailboxes_connect_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/mailboxes/oauth/callback": {
         parameters: {
             query?: never;
@@ -408,6 +443,43 @@ export interface paths {
         head?: never;
         /** Update Ticket */
         patch: operations["update_ticket_api_v1_tickets__ticket_id__patch"];
+        trace?: never;
+    };
+    "/api/v1/tickets/{ticket_id}/suggestion": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Suggestion
+         * @description The LLM draft for the newest customer message on this ticket (null if none yet).
+         */
+        get: operations["get_suggestion_api_v1_tickets__ticket_id__suggestion_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tickets/{ticket_id}/suggestion/{suggestion_id}/rating": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Rate Suggestion */
+        post: operations["rate_suggestion_api_v1_tickets__ticket_id__suggestion__suggestion_id__rating_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/tickets/{ticket_id}/notes": {
@@ -495,6 +567,59 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/kb": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Docs */
+        get: operations["list_docs_api_v1_kb_get"];
+        put?: never;
+        /** Create Doc */
+        post: operations["create_doc_api_v1_kb_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/kb/upload": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Upload Doc */
+        post: operations["upload_doc_api_v1_kb_upload_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/kb/{doc_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete Doc */
+        delete: operations["delete_doc_api_v1_kb__doc_id__delete"];
+        options?: never;
+        head?: never;
+        /** Update Doc */
+        patch: operations["update_doc_api_v1_kb__doc_id__patch"];
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -516,6 +641,15 @@ export interface components {
             mime_type: string;
             /** Size Bytes */
             size_bytes: number;
+        };
+        /** Body_upload_doc_api_v1_kb_upload_post */
+        Body_upload_doc_api_v1_kb_upload_post: {
+            /** File */
+            file: string;
+            /** Title */
+            title: string;
+            /** Store Id */
+            store_id?: number | null;
         };
         /** BusinessHours */
         BusinessHours: {
@@ -580,6 +714,47 @@ export interface components {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
         };
+        /** KbDocumentIn */
+        KbDocumentIn: {
+            /** Title */
+            title: string;
+            /** Store Id */
+            store_id?: number | null;
+            /**
+             * Body Text
+             * @default
+             */
+            body_text: string;
+        };
+        /** KbDocumentOut */
+        KbDocumentOut: {
+            /** Id */
+            id: number;
+            /** Store Id */
+            store_id: number | null;
+            /** Title */
+            title: string;
+            /** Filename */
+            filename: string | null;
+            /** Is Active */
+            is_active: boolean;
+            /** Char Count */
+            char_count: number;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
+        /** KbDocumentPatch */
+        KbDocumentPatch: {
+            /** Title */
+            title?: string | null;
+            /** Store Id */
+            store_id?: number | null;
+            /** Is Active */
+            is_active?: boolean | null;
+        };
         /** LinkedTicket */
         LinkedTicket: {
             /** Id */
@@ -590,6 +765,35 @@ export interface components {
             subject: string;
             /** Status */
             status: string;
+        };
+        /** LlmSettingsIn */
+        LlmSettingsIn: {
+            /**
+             * Provider
+             * @enum {string}
+             */
+            provider: "anthropic" | "openai";
+            /** Model */
+            model?: string | null;
+            /** Base Url */
+            base_url?: string | null;
+            /** Api Key */
+            api_key?: string | null;
+            /** Apply Priority */
+            apply_priority?: boolean | null;
+        };
+        /** LlmSettingsOut */
+        LlmSettingsOut: {
+            /** Provider */
+            provider: string | null;
+            /** Model */
+            model: string | null;
+            /** Base Url */
+            base_url: string | null;
+            /** Configured */
+            configured: boolean;
+            /** Apply Priority */
+            apply_priority: boolean;
         };
         /** MailboxDetail */
         MailboxDetail: {
@@ -689,6 +893,11 @@ export interface components {
             /** Body Text */
             body_text: string;
         };
+        /** RatingIn */
+        RatingIn: {
+            /** Rating */
+            rating: number;
+        };
         /** ReplyIn */
         ReplyIn: {
             /** Body Text */
@@ -737,6 +946,15 @@ export interface components {
              * @default
              */
             signature_text: string;
+            /**
+             * Ai Guidance
+             * @default
+             */
+            ai_guidance: string;
+            /** Shopify Domain */
+            shopify_domain?: string | null;
+            /** Shopify Token */
+            shopify_token?: string | null;
         };
         /** StoreOut */
         StoreOut: {
@@ -748,6 +966,12 @@ export interface components {
             is_active: boolean;
             /** Signature Text */
             signature_text: string;
+            /** Ai Guidance */
+            ai_guidance: string;
+            /** Shopify Domain */
+            shopify_domain: string | null;
+            /** Shopify Connected */
+            shopify_connected: boolean;
         };
         /** StorePatch */
         StorePatch: {
@@ -755,8 +979,43 @@ export interface components {
             name?: string | null;
             /** Signature Text */
             signature_text?: string | null;
+            /** Ai Guidance */
+            ai_guidance?: string | null;
             /** Is Active */
             is_active?: boolean | null;
+            /** Shopify Domain */
+            shopify_domain?: string | null;
+            /** Shopify Token */
+            shopify_token?: string | null;
+        };
+        /** SuggestionOut */
+        SuggestionOut: {
+            /** Id */
+            id: number;
+            /** Message Id */
+            message_id: number;
+            /** Status */
+            status: string;
+            /** Category */
+            category: string | null;
+            /** Priority */
+            priority: string | null;
+            /** Sentiment */
+            sentiment: string | null;
+            /** Language */
+            language: string | null;
+            /** Summary */
+            summary: string;
+            /** Suggested Reply */
+            suggested_reply: string;
+            /** Missing Info */
+            missing_info: unknown[];
+            /** Documents Used */
+            documents_used: unknown[];
+            /** Error */
+            error: string | null;
+            /** Rating */
+            rating: number | null;
         };
         /** SupportAddressOut */
         SupportAddressOut: {
@@ -1537,6 +1796,79 @@ export interface operations {
             };
         };
     };
+    get_llm_api_v1_settings_llm_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LlmSettingsOut"];
+                };
+            };
+        };
+    };
+    put_llm_api_v1_settings_llm_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LlmSettingsIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LlmSettingsOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    test_llm_api_v1_settings_llm_test_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
     list_mailboxes_api_v1_mailboxes_get: {
         parameters: {
             query?: never;
@@ -1553,6 +1885,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MailboxOut"][];
+                };
+            };
+        };
+    };
+    connect_api_v1_mailboxes_connect_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                 };
             };
         };
@@ -1709,26 +2061,6 @@ export interface operations {
             };
         };
     };
-    connect_api_v1_mailboxes_connect_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-        };
-    };
     oauth_callback_api_v1_mailboxes_oauth_callback_get: {
         parameters: {
             query?: never;
@@ -1841,6 +2173,73 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TicketDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_suggestion_api_v1_tickets__ticket_id__suggestion_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ticket_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SuggestionOut"] | null;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    rate_suggestion_api_v1_tickets__ticket_id__suggestion__suggestion_id__rating_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ticket_id: number;
+                suggestion_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RatingIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SuggestionOut"];
                 };
             };
             /** @description Validation Error */
@@ -2003,6 +2402,156 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Dashboard"];
+                };
+            };
+        };
+    };
+    list_docs_api_v1_kb_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KbDocumentOut"][];
+                };
+            };
+        };
+    };
+    create_doc_api_v1_kb_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["KbDocumentIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KbDocumentOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    upload_doc_api_v1_kb_upload_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_upload_doc_api_v1_kb_upload_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KbDocumentOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_doc_api_v1_kb__doc_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                doc_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_doc_api_v1_kb__doc_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                doc_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["KbDocumentPatch"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KbDocumentOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

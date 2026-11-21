@@ -20,17 +20,26 @@ class StoreOut(Out):
     name: str
     is_active: bool
     signature_text: str
+    ai_guidance: str
+    shopify_domain: str | None
+    shopify_connected: bool
 
 
 class StoreIn(In):
     name: str = Field(min_length=1, max_length=100)
     signature_text: str = Field("", max_length=5000)
+    ai_guidance: str = Field("", max_length=20000)
+    shopify_domain: str | None = Field(None, max_length=255)
+    shopify_token: str | None = Field(None, max_length=500)  # write-only; stored encrypted
 
 
 class StorePatch(In):
     name: str | None = Field(None, min_length=1, max_length=100)
     signature_text: str | None = Field(None, max_length=5000)
+    ai_guidance: str | None = Field(None, max_length=20000)
     is_active: bool | None = None
+    shopify_domain: str | None = Field(None, max_length=255)
+    shopify_token: str | None = Field(None, max_length=500)  # write-only; "" clears the connection
 
 
 class UserOut(Out):
@@ -273,3 +282,64 @@ class Dashboard(Out):
     by_executive: list[Count]
     by_store: list[Count]
     mailboxes: list[MailboxHealth]
+
+
+# ---- Knowledge base & suggestions (Phase 2) ----
+
+
+class KbDocumentOut(Out):
+    id: int
+    store_id: int | None
+    title: str
+    filename: str | None
+    is_active: bool
+    char_count: int
+    created_at: datetime
+
+
+class KbDocumentIn(In):
+    title: str = Field(min_length=1, max_length=200)
+    store_id: int | None = None  # null = shared across all stores
+    body_text: str = Field("", max_length=500000)  # for a pasted article; file upload sets this instead
+
+
+class KbDocumentPatch(In):
+    title: str | None = Field(None, min_length=1, max_length=200)
+    store_id: int | None = None
+    is_active: bool | None = None
+
+
+class SuggestionOut(Out):
+    id: int
+    message_id: int
+    status: str
+    category: str | None
+    priority: str | None
+    sentiment: str | None
+    language: str | None
+    summary: str
+    suggested_reply: str
+    missing_info: list
+    documents_used: list
+    error: str | None
+    rating: int | None
+
+
+class RatingIn(In):
+    rating: int = Field(ge=-1, le=1)  # 1 helpful, -1 not helpful, 0 clears
+
+
+class LlmSettingsOut(Out):
+    provider: str | None
+    model: str | None
+    base_url: str | None
+    configured: bool
+    apply_priority: bool
+
+
+class LlmSettingsIn(In):
+    provider: Literal["anthropic", "openai"]
+    model: str | None = Field(None, max_length=100)
+    base_url: str | None = Field(None, max_length=300)  # for OpenAI-compatible endpoints
+    api_key: str | None = Field(None, max_length=500)  # omit to keep the saved key; "" clears it
+    apply_priority: bool | None = None  # let the AI set ticket priority; omit to keep current

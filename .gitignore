@@ -1,7 +1,17 @@
 .env
+.env.*
+!.env.example
+client_secret_*.json
 .venv/
 __pycache__/
+*.py[cod]
 .pytest_cache/
+.coverage
+htmlcov/
 node_modules/
 dist/
+*.tsbuildinfo
+*.log
 backups/
+.DS_Store
+Thumbs.db

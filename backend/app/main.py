@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from starlette.middleware.sessions import SessionMiddleware
 
 from . import auth
-from .api import admin, dashboard, mailboxes, tickets
+from .api import admin, dashboard, kb, mailboxes, tickets
 from .config import settings
 from .db import get_db
 from .errors import ApiError
@@ -100,4 +100,5 @@ api.include_router(admin.router)
 api.include_router(mailboxes.router)
 api.include_router(tickets.router)
 api.include_router(dashboard.router)
+api.include_router(kb.router)
 app.include_router(api)

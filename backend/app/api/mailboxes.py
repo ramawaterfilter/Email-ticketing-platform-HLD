@@ -21,6 +21,15 @@ router = APIRouter(tags=["mailboxes"], dependencies=[Depends(require_role("admin
 
 REDIRECT_PATH = "/api/v1/mailboxes/oauth/callback"
 
+# Local development runs over http://localhost; Google's oauthlib otherwise refuses the
+# non-https callback, and Google adds openid/email/profile to the gmail.modify request.
+# Both relaxations apply only when the app is served over http (never in production/https).
+if settings.public_url.startswith("http://"):
+    import os as _os
+
+    _os.environ.setdefault("OAUTHLIB_INSECURE_TRANSPORT", "1")
+    _os.environ.setdefault("OAUTHLIB_RELAX_TOKEN_SCOPE", "1")
+
 
 def _last_run(db: Session, mailbox_id: int, kind: str) -> SyncRun | None:
     q = select(SyncRun).where(SyncRun.mailbox_id == mailbox_id).order_by(SyncRun.id.desc())
@@ -34,6 +43,19 @@ def _last_run(db: Session, mailbox_id: int, kind: str) -> SyncRun | None:
 @router.get("/mailboxes", response_model=list[MailboxOut])
 def list_mailboxes(db: Session = Depends(get_db)):
     return db.scalars(select(Mailbox).order_by(Mailbox.google_email)).all()
+
+
+# Static paths must be declared before the dynamic /mailboxes/{mailbox_id} route,
+# otherwise "connect" gets matched as a mailbox id.
+@router.get("/mailboxes/connect")
+def connect(request: Request):
+    flow = _flow()
+    state = secrets.token_urlsafe(24)
+    url, _ = flow.authorization_url(access_type="offline", prompt="consent", include_granted_scopes="true", state=state)
+    request.session["mailbox_oauth_state"] = state
+    # Carry the PKCE verifier to the callback, which builds a fresh Flow object.
+    request.session["mailbox_code_verifier"] = flow.code_verifier
+    return RedirectResponse(url)
 
 
 @router.get("/mailboxes/{mailbox_id}", response_model=MailboxDetail)
@@ -132,14 +154,6 @@ def _flow(state: str | None = None):
     return flow
 
 
-@router.get("/mailboxes/connect")
-def connect(request: Request):
-    flow = _flow()
-    state = secrets.token_urlsafe(24)
-    request.session["mailbox_oauth_state"] = state
-    url, _ = flow.authorization_url(access_type="offline", prompt="consent", include_granted_scopes="true", state=state)
-    return RedirectResponse(url)
-
 
 @router.get("/mailboxes/oauth/callback")
 def oauth_callback(request: Request, db: Session = Depends(get_db)):
@@ -148,6 +162,7 @@ def oauth_callback(request: Request, db: Session = Depends(get_db)):
     if request.query_params.get("state") != request.session.pop("mailbox_oauth_state", None):
         raise ApiError(400, "bad_state", "Sign-in state did not match; please try again")
     flow = _flow(state=request.query_params.get("state"))
+    flow.code_verifier = request.session.pop("mailbox_code_verifier", None)
     flow.fetch_token(authorization_response=str(request.url))
     client = _client_from_credentials(flow.credentials)
 

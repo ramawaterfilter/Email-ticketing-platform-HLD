@@ -15,13 +15,15 @@ from ..db import get_db
 from ..errors import ApiError
 from ..gmail.client import client_for
 from ..gmail.send import retry_reply, send_reply
-from ..models import OPEN_STATUSES, AppUser, Mailbox, Message, Ticket, TicketEvent
+from ..models import OPEN_STATUSES, AppUser, Mailbox, Message, Suggestion, Ticket, TicketEvent
 from ..schemas import (
     EventOut,
     LinkedTicket,
     MessageOut,
     NoteIn,
+    RatingIn,
     ReplyIn,
+    SuggestionOut,
     TicketDetail,
     TicketList,
     TicketListItem,
@@ -252,6 +254,35 @@ def _change_store(db: Session, t: Ticket, store_id: int, user: AppUser) -> None:
     old = t.store_id
     t.store_id = store_id
     db.add(TicketEvent(ticket_id=t.id, actor_user_id=user.id, type="store_changed", data={"from": old, "to": store_id}))
+
+
+@router.get("/tickets/{ticket_id}/suggestion", response_model=SuggestionOut | None)
+def get_suggestion(ticket_id: int, db: Session = Depends(get_db), user: AppUser = Depends(current_user)):
+    """The LLM draft for the newest customer message on this ticket (null if none yet)."""
+    t = _visible(db, user, ticket_id)
+    last_inbound = db.scalar(
+        select(Message.id)
+        .where(Message.ticket_id == t.id, Message.direction == "inbound")
+        .order_by(Message.id.desc())
+        .limit(1)
+    )
+    if last_inbound is None:
+        return None
+    return db.scalar(select(Suggestion).where(Suggestion.message_id == last_inbound))
+
+
+@router.post("/tickets/{ticket_id}/suggestion/{suggestion_id}/rating", response_model=SuggestionOut)
+def rate_suggestion(
+    ticket_id: int, suggestion_id: int, body: RatingIn, db: Session = Depends(get_db),
+    user: AppUser = Depends(current_user),
+):
+    t = _visible(db, user, ticket_id)
+    s = db.get(Suggestion, suggestion_id)
+    if s is None or s.ticket_id != t.id:
+        raise ApiError(404, "not_found", "Suggestion not found")
+    s.rating = body.rating or None
+    db.commit()
+    return s
 
 
 @router.post("/tickets/{ticket_id}/notes", response_model=MessageOut, status_code=201)

@@ -51,7 +51,16 @@ class Store(Base):
     name: Mapped[str] = mapped_column(CITEXT, unique=True)
     is_active: Mapped[bool] = mapped_column(default=True, server_default="true")
     signature_text: Mapped[str] = mapped_column(Text, default="", server_default="")
+    # Brand tone + reply rules fed to the LLM when it drafts replies for this store (Phase 2).
+    ai_guidance: Mapped[str] = mapped_column(Text, default="", server_default="")
+    # Per-store Shopify Admin API connection, used to look up the customer's orders (Phase 2).
+    shopify_domain: Mapped[str | None] = mapped_column(Text)  # e.g. my-store.myshopify.com
+    shopify_token_enc: Mapped[str | None] = mapped_column(Text)  # encrypted Admin API access token
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    @property
+    def shopify_connected(self) -> bool:
+        return bool(self.shopify_domain and self.shopify_token_enc)
 
 
 class AppUser(Base):
@@ -276,3 +285,55 @@ class Setting(Base):
 
     key: Mapped[str] = mapped_column(Text, primary_key=True)
     value: Mapped[dict] = mapped_column(JSONB, default=dict)
+
+
+class KbDocument(Base):
+    """A knowledge-base document the LLM may draw on. store_id null = shared across all stores."""
+
+    __tablename__ = "kb_document"
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
+    store_id: Mapped[int | None] = mapped_column(ForeignKey("store.id", ondelete="CASCADE"), index=True)
+    title: Mapped[str] = mapped_column(Text)
+    filename: Mapped[str | None] = mapped_column(Text)
+    body_text: Mapped[str] = mapped_column(Text, default="", server_default="")  # extracted plain text
+    is_active: Mapped[bool] = mapped_column(default=True, server_default="true")
+    created_by: Mapped[int | None] = mapped_column(ForeignKey("app_user.id", ondelete="SET NULL"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class Suggestion(Base):
+    """An LLM-drafted reply for one inbound customer message. The row doubles as the job:
+    created `pending` at ingest, the worker fills it in and marks it `ready` or `failed`."""
+
+    __tablename__ = "suggestion"
+    __table_args__ = (
+        CheckConstraint("status in ('pending', 'ready', 'failed')", name="suggestion_status_check"),
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
+    message_id: Mapped[int] = mapped_column(
+        ForeignKey("message.id", ondelete="CASCADE"), unique=True, index=True
+    )  # one suggestion per inbound message
+    ticket_id: Mapped[int] = mapped_column(ForeignKey("ticket.id", ondelete="CASCADE"), index=True)
+    store_id: Mapped[int] = mapped_column(ForeignKey("store.id", ondelete="CASCADE"))
+    status: Mapped[str] = mapped_column(Text, default="pending", server_default="pending", index=True)
+
+    model: Mapped[str | None] = mapped_column(Text)
+    category: Mapped[str | None] = mapped_column(Text)
+    priority: Mapped[str | None] = mapped_column(Text)
+    sentiment: Mapped[str | None] = mapped_column(Text)
+    language: Mapped[str | None] = mapped_column(Text)
+    summary: Mapped[str] = mapped_column(Text, default="", server_default="")
+    suggested_reply: Mapped[str] = mapped_column(Text, default="", server_default="")
+    missing_info: Mapped[list] = mapped_column(JSONB, default=list)
+    documents_used: Mapped[list] = mapped_column(JSONB, default=list)  # [{id, title}] for traceability
+    error: Mapped[str | None] = mapped_column(Text)
+
+    rating: Mapped[int | None] = mapped_column(Integer)  # 1 = helpful, -1 = not helpful
+    final_sent_text: Mapped[str | None] = mapped_column(Text)  # what the executive actually sent
+    attempts: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=_utcnow
+    )
