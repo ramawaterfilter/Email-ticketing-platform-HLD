@@ -1,4 +1,5 @@
 import {
+  ActionIcon,
   Alert,
   Anchor,
   Badge,
@@ -14,10 +15,19 @@ import {
   Tabs,
   Text,
   Textarea,
+  ThemeIcon,
   Title,
 } from "@mantine/core";
+import {
+  IconArrowBackUp,
+  IconMessages,
+  IconPaperclip,
+  IconSparkles,
+  IconThumbDown,
+  IconThumbUp,
+} from "@tabler/icons-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useMemo, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router";
 
 import {
@@ -87,13 +97,18 @@ function Loaded({ t }: { t: TicketDetail }) {
   );
 }
 
+const BUBBLE_BG: Record<string, string> = {
+  note: "light-dark(var(--mantine-color-yellow-0), color-mix(in srgb, var(--mantine-color-yellow-6) 16%, transparent))",
+  outbound: "light-dark(var(--mantine-color-brand-0), color-mix(in srgb, var(--mantine-color-brand-6) 15%, transparent))",
+  inbound: "light-dark(var(--mantine-color-gray-0), var(--mantine-color-dark-6))",
+};
+
 function Thread({ messages }: { messages: TicketMessage[] }) {
-  const color = (m: TicketMessage) =>
-    m.direction === "note" ? "yellow.0" : m.direction === "outbound" ? "blue.0" : "gray.0";
+  const bg = (m: TicketMessage) => BUBBLE_BG[m.direction] ?? BUBBLE_BG.inbound;
   return (
     <Stack>
       {messages.map((m) => (
-        <Paper key={m.id} withBorder p="sm" bg={color(m)}>
+        <Paper key={m.id} withBorder p="sm" style={{ backgroundColor: bg(m) }}>
           <Group justify="space-between" mb={4}>
             <Text size="sm" fw={600}>
               {m.direction === "note" ? "Internal note" : m.from_name || m.from_address}
@@ -114,7 +129,10 @@ function Thread({ messages }: { messages: TicketMessage[] }) {
             <Group gap="xs" mt="xs">
               {m.attachments.map((a) => (
                 <Anchor key={a.id} href={`/api/v1/attachments/${a.id}`} size="xs">
-                  📎 {a.filename}
+                  <Group gap={4} wrap="nowrap" display="inline-flex">
+                    <IconPaperclip size={13} />
+                    {a.filename}
+                  </Group>
                 </Anchor>
               ))}
             </Group>
@@ -202,6 +220,7 @@ function Composer({
                 size="xs"
                 maw={260}
                 placeholder="Insert canned response…"
+                leftSection={<IconMessages size={15} />}
                 data={cannedOptions}
                 value={null}
                 searchable
@@ -272,9 +291,12 @@ function SuggestionPanel({ ticketId, onUse }: { ticketId: number; onUse: (text: 
   if (!s) return null; // LLM off, or no customer message yet
 
   return (
-    <Card withBorder bg="var(--mantine-color-blue-light)">
+    <Card withBorder bg="var(--mantine-color-brand-light)">
       <Group justify="space-between" mb="xs">
         <Group gap="xs">
+          <ThemeIcon size="sm" radius="sm" variant="light" color="brand">
+            <IconSparkles size={14} />
+          </ThemeIcon>
           <Text fw={600}>Suggested reply</Text>
           <Badge size="xs" variant="light">
             AI draft — review before sending
@@ -282,8 +304,16 @@ function SuggestionPanel({ ticketId, onUse }: { ticketId: number; onUse: (text: 
         </Group>
         {s.status === "ready" && (
           <Group gap={4}>
-            <ActionButton active={s.rating === 1} label="👍" onClick={() => rate.mutate({ sid: s.id, rating: s.rating === 1 ? 0 : 1 })} />
-            <ActionButton active={s.rating === -1} label="👎" onClick={() => rate.mutate({ sid: s.id, rating: s.rating === -1 ? 0 : -1 })} />
+            <ActionButton
+              active={s.rating === 1}
+              label={<IconThumbUp size={15} />}
+              onClick={() => rate.mutate({ sid: s.id, rating: s.rating === 1 ? 0 : 1 })}
+            />
+            <ActionButton
+              active={s.rating === -1}
+              label={<IconThumbDown size={15} />}
+              onClick={() => rate.mutate({ sid: s.id, rating: s.rating === -1 ? 0 : -1 })}
+            />
           </Group>
         )}
       </Group>
@@ -328,7 +358,7 @@ function SuggestionPanel({ ticketId, onUse }: { ticketId: number; onUse: (text: 
                 ? `Based on: ${(s.documents_used as { title: string }[]).map((d) => d.title).join(", ")}`
                 : "No store documents were used."}
             </Text>
-            <Button size="xs" onClick={() => onUse(s.suggested_reply)}>
+            <Button size="xs" leftSection={<IconArrowBackUp size={15} />} onClick={() => onUse(s.suggested_reply)}>
               Use this draft
             </Button>
           </Group>
@@ -338,11 +368,11 @@ function SuggestionPanel({ ticketId, onUse }: { ticketId: number; onUse: (text: 
   );
 }
 
-function ActionButton({ active, label, onClick }: { active: boolean; label: string; onClick: () => void }) {
+function ActionButton({ active, label, onClick }: { active: boolean; label: ReactNode; onClick: () => void }) {
   return (
-    <Button size="compact-xs" variant={active ? "filled" : "subtle"} onClick={onClick}>
+    <ActionIcon size="md" radius="md" variant={active ? "filled" : "subtle"} color="brand" onClick={onClick}>
       {label}
-    </Button>
+    </ActionIcon>
   );
 }
 

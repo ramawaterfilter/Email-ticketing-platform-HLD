@@ -1,19 +1,45 @@
-import { Card, Group, Loader, SegmentedControl, Select, SimpleGrid, Stack, Table, Text, Title } from "@mantine/core";
+import { Card, Group, Loader, SegmentedControl, Select, SimpleGrid, Stack, Table, Text, ThemeIcon, Title } from "@mantine/core";
+import {
+  IconChecks,
+  IconClock,
+  IconGauge,
+  IconSparkles,
+  IconThumbUp,
+  IconTicket,
+  type Icon,
+} from "@tabler/icons-react";
 import { useState } from "react";
 
 import { useReport, useStores } from "../api";
 
-function Stat({ label, value, hint }: { label: string; value: string; hint?: string }) {
+function Stat({
+  label,
+  value,
+  hint,
+  icon: IconCmp,
+  color,
+}: {
+  label: string;
+  value: string;
+  hint?: string;
+  icon: Icon;
+  color: string;
+}) {
   return (
-    <Card withBorder>
-      <Text size="xs" c="dimmed" tt="uppercase" fw={600}>
-        {label}
-      </Text>
-      <Text fz={28} fw={700} lh={1.2} mt={4}>
+    <Card>
+      <Group justify="space-between" align="flex-start" mb="xs">
+        <Text size="sm" c="dimmed" fw={500}>
+          {label}
+        </Text>
+        <ThemeIcon variant="light" color={color} radius="md" size="lg">
+          <IconCmp size={19} stroke={1.7} />
+        </ThemeIcon>
+      </Group>
+      <Text fz={30} fw={700} lh={1.1} style={{ fontVariantNumeric: "tabular-nums" }}>
         {value}
       </Text>
       {hint && (
-        <Text size="xs" c="dimmed" mt={2}>
+        <Text size="xs" c="dimmed" mt={4}>
           {hint}
         </Text>
       )}
@@ -37,7 +63,12 @@ export default function Reports() {
   return (
     <Stack>
       <Group justify="space-between" wrap="wrap">
-        <Title order={3}>Reports</Title>
+        <div>
+          <Title order={3}>Reports</Title>
+          <Text c="dimmed" size="sm">
+            Volume, responsiveness, and AI assistance over time.
+          </Text>
+        </div>
         <Group>
           <Select
             w={200}
@@ -62,56 +93,84 @@ export default function Reports() {
       </Group>
 
       {report.isPending || !r ? (
-        <Loader />
+        <Loader color="brand" />
       ) : (
         <>
           <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }}>
-            <Stat label="Tickets created" value={String(r.created)} />
-            <Stat label="Tickets resolved" value={String(r.resolved)} />
+            <Stat label="Tickets created" value={String(r.created)} icon={IconTicket} color="brand" />
+            <Stat label="Tickets resolved" value={String(r.resolved)} icon={IconChecks} color="teal" />
             <Stat
               label="First-response SLA met"
               value={r.first_response_sla_pct === null ? "—" : `${r.first_response_sla_pct}%`}
               hint="share not breached"
+              icon={IconGauge}
+              color="green"
             />
             <Stat
               label="Median first response"
               value={r.median_first_response_min === null ? "—" : fmtMins(r.median_first_response_min)}
               hint="wall-clock, not business hours"
+              icon={IconClock}
+              color="blue"
             />
-            <Stat label="Missed emails recovered" value={String(r.recoveries)} hint="by reconciliation" />
-            <Stat label="AI drafts generated" value={String(r.ai_ready)} />
-            <Stat label="AI drafts used" value={String(r.ai_used)} hint="sent after a draft existed" />
-            <Stat label="AI acceptance" value={accept} hint={`👍 ${r.ai_helpful} · 👎 ${r.ai_not_helpful}`} />
+            <Stat
+              label="Missed emails recovered"
+              value={String(r.recoveries)}
+              hint="by reconciliation"
+              icon={IconChecks}
+              color="indigo"
+            />
+            <Stat label="AI drafts generated" value={String(r.ai_ready)} icon={IconSparkles} color="grape" />
+            <Stat
+              label="AI drafts used"
+              value={String(r.ai_used)}
+              hint="sent after a draft existed"
+              icon={IconSparkles}
+              color="violet"
+            />
+            <Stat
+              label="AI acceptance"
+              value={accept}
+              hint={`${r.ai_helpful} helpful · ${r.ai_not_helpful} not`}
+              icon={IconThumbUp}
+              color="yellow"
+            />
           </SimpleGrid>
 
           <Title order={5} mt="md">
             By store
           </Title>
-          <Table>
-            <Table.Thead>
-              <Table.Tr>
-                <Table.Th>Store</Table.Th>
-                <Table.Th ta="right">Created</Table.Th>
-                <Table.Th ta="right">Resolved</Table.Th>
-              </Table.Tr>
-            </Table.Thead>
-            <Table.Tbody>
-              {r.by_store.map((s) => (
-                <Table.Tr key={s.id}>
-                  <Table.Td>{s.name}</Table.Td>
-                  <Table.Td ta="right">{s.created}</Table.Td>
-                  <Table.Td ta="right">{s.resolved}</Table.Td>
-                </Table.Tr>
-              ))}
-              {r.by_store.length === 0 && (
+          <Card p={0}>
+            <Table verticalSpacing="sm" horizontalSpacing="lg" highlightOnHover>
+              <Table.Thead>
                 <Table.Tr>
-                  <Table.Td colSpan={3}>
-                    <Text c="dimmed">No tickets in this period.</Text>
-                  </Table.Td>
+                  <Table.Th>Store</Table.Th>
+                  <Table.Th ta="right">Created</Table.Th>
+                  <Table.Th ta="right">Resolved</Table.Th>
                 </Table.Tr>
-              )}
-            </Table.Tbody>
-          </Table>
+              </Table.Thead>
+              <Table.Tbody>
+                {r.by_store.map((s) => (
+                  <Table.Tr key={s.id}>
+                    <Table.Td>{s.name}</Table.Td>
+                    <Table.Td ta="right" style={{ fontVariantNumeric: "tabular-nums" }}>
+                      {s.created}
+                    </Table.Td>
+                    <Table.Td ta="right" style={{ fontVariantNumeric: "tabular-nums" }}>
+                      {s.resolved}
+                    </Table.Td>
+                  </Table.Tr>
+                ))}
+                {r.by_store.length === 0 && (
+                  <Table.Tr>
+                    <Table.Td colSpan={3}>
+                      <Text c="dimmed">No tickets in this period.</Text>
+                    </Table.Td>
+                  </Table.Tr>
+                )}
+              </Table.Tbody>
+            </Table>
+          </Card>
         </>
       )}
     </Stack>
