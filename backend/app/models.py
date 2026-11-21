@@ -296,6 +296,7 @@ class KbDocument(Base):
     store_id: Mapped[int | None] = mapped_column(ForeignKey("store.id", ondelete="CASCADE"), index=True)
     title: Mapped[str] = mapped_column(Text)
     filename: Mapped[str | None] = mapped_column(Text)
+    source_url: Mapped[str | None] = mapped_column(Text)  # set when imported from the web; enables refresh
     body_text: Mapped[str] = mapped_column(Text, default="", server_default="")  # extracted plain text
     is_active: Mapped[bool] = mapped_column(default=True, server_default="true")
     created_by: Mapped[int | None] = mapped_column(ForeignKey("app_user.id", ondelete="SET NULL"))

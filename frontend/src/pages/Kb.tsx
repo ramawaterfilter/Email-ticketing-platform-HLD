@@ -1,5 +1,6 @@
 import {
   Alert,
+  Anchor,
   Badge,
   Button,
   FileInput,
@@ -14,6 +15,7 @@ import {
   TextInput,
   Title,
 } from "@mantine/core";
+import { IconRefresh } from "@tabler/icons-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { type FormEvent, useState } from "react";
 
@@ -32,6 +34,7 @@ export default function Kb() {
     onSuccess: refresh,
   });
   const remove = useMutation({ mutationFn: (id: number) => api(`/kb/${id}`, "DELETE"), onSuccess: refresh });
+  const reimport = useMutation({ mutationFn: (id: number) => api(`/kb/${id}/refresh`, "POST"), onSuccess: refresh });
 
   return (
     <Stack>
@@ -64,6 +67,11 @@ export default function Kb() {
                     · {d.filename}
                   </Text>
                 )}
+                {d.source_url && (
+                  <Anchor href={d.source_url} target="_blank" rel="noreferrer" size="xs" display="block" lineClamp={1}>
+                    {d.source_url}
+                  </Anchor>
+                )}
               </Table.Td>
               <Table.Td>
                 <Badge variant="light" color={d.store_id === null ? "grape" : "blue"}>
@@ -75,6 +83,17 @@ export default function Kb() {
                 <Badge color={d.is_active ? "green" : "gray"}>{d.is_active ? "Active" : "Off"}</Badge>
               </Table.Td>
               <Table.Td ta="right">
+                {d.source_url && (
+                  <Button
+                    size="compact-xs"
+                    variant="subtle"
+                    leftSection={<IconRefresh size={13} />}
+                    loading={reimport.isPending && reimport.variables === d.id}
+                    onClick={() => reimport.mutate(d.id)}
+                  >
+                    Refresh
+                  </Button>
+                )}
                 <Button size="compact-xs" variant="subtle" onClick={() => toggle.mutate(d)}>
                   {d.is_active ? "Turn off" : "Turn on"}
                 </Button>
@@ -106,6 +125,7 @@ function AddModal({ opened, onClose, onSaved }: { opened: boolean; onClose: () =
   const [storeId, setStoreId] = useState<string | null>(null); // null = shared
   const [text, setText] = useState("");
   const [file, setFile] = useState<File | null>(null);
+  const [url, setUrl] = useState("");
 
   const storeOptions = [
     { value: "shared", label: "Shared (all stores)" },
@@ -115,6 +135,10 @@ function AddModal({ opened, onClose, onSaved }: { opened: boolean; onClose: () =
 
   const save = useMutation({
     mutationFn: async () => {
+      if (mode === "url") {
+        await api("/kb/from-url", "POST", { url, title: title.trim() || null, store_id: resolvedStore });
+        return;
+      }
       if (mode === "file") {
         const form = new FormData();
         form.append("file", file!);
@@ -130,6 +154,7 @@ function AddModal({ opened, onClose, onSaved }: { opened: boolean; onClose: () =
       setTitle("");
       setText("");
       setFile(null);
+      setUrl("");
       onSaved();
       onClose();
     },
@@ -139,14 +164,21 @@ function AddModal({ opened, onClose, onSaved }: { opened: boolean; onClose: () =
     e.preventDefault();
     save.mutate();
   };
-  const canSave = title.trim() && (mode === "text" ? text.trim() : file);
+  const canSave =
+    mode === "url" ? !!url.trim() : !!title.trim() && (mode === "text" ? !!text.trim() : !!file);
 
   return (
     <Modal opened={opened} onClose={onClose} title="Add knowledge-base document" size="lg">
       <form onSubmit={submit}>
         <Stack>
           {save.isError && <Alert color="red">{(save.error as Error).message}</Alert>}
-          <TextInput label="Title" required value={title} onChange={(e) => setTitle(e.currentTarget.value)} />
+          <TextInput
+            label={mode === "url" ? "Title (optional)" : "Title"}
+            required={mode !== "url"}
+            placeholder={mode === "url" ? "Defaults to the page title" : undefined}
+            value={title}
+            onChange={(e) => setTitle(e.currentTarget.value)}
+          />
           <Select
             label="Applies to"
             data={storeOptions}
@@ -160,9 +192,10 @@ function AddModal({ opened, onClose, onSaved }: { opened: boolean; onClose: () =
             data={[
               { value: "text", label: "Paste text" },
               { value: "file", label: "Upload file" },
+              { value: "url", label: "From URL" },
             ]}
           />
-          {mode === "text" ? (
+          {mode === "text" && (
             <Textarea
               label="Document text"
               autosize
@@ -171,13 +204,23 @@ function AddModal({ opened, onClose, onSaved }: { opened: boolean; onClose: () =
               value={text}
               onChange={(e) => setText(e.currentTarget.value)}
             />
-          ) : (
+          )}
+          {mode === "file" && (
             <FileInput
               label="File"
               description="PDF, Word (.docx), text, Markdown or CSV — up to 10 MB"
               accept=".pdf,.docx,.txt,.md,.csv,.json"
               value={file}
               onChange={setFile}
+            />
+          )}
+          {mode === "url" && (
+            <TextInput
+              label="Web address"
+              description="Fetches the page (or PDF) and stores its text. You can refresh it later."
+              placeholder="https://yourstore.com/pages/return-policy"
+              value={url}
+              onChange={(e) => setUrl(e.currentTarget.value)}
             />
           )}
           <Group justify="flex-end">

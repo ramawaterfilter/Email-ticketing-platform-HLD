@@ -454,7 +454,12 @@ export interface paths {
         };
         /**
          * Get Suggestion
-         * @description The LLM draft for the newest customer message on this ticket (null if none yet).
+         * @description The LLM draft for the newest customer message on this ticket.
+         *
+         *     On-demand: if the ticket has no draft yet and the AI is enabled, opening it
+         *     queues one here (the worker fills it in; the client polls while it is pending).
+         *     New inbound mail already queues a draft at ingest, so this only backfills the
+         *     tickets an agent actually opens.
          */
         get: operations["get_suggestion_api_v1_tickets__ticket_id__suggestion_get"];
         put?: never;
@@ -613,6 +618,40 @@ export interface paths {
         put?: never;
         /** Upload Doc */
         post: operations["upload_doc_api_v1_kb_upload_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/kb/from-url": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Import From Url */
+        post: operations["import_from_url_api_v1_kb_from_url_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/kb/{doc_id}/refresh": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Refresh From Url */
+        post: operations["refresh_from_url_api_v1_kb__doc_id__refresh_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -800,6 +839,15 @@ export interface components {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
         };
+        /** KbDocumentFromUrl */
+        KbDocumentFromUrl: {
+            /** Url */
+            url: string;
+            /** Title */
+            title?: string | null;
+            /** Store Id */
+            store_id?: number | null;
+        };
         /** KbDocumentIn */
         KbDocumentIn: {
             /** Title */
@@ -822,6 +870,8 @@ export interface components {
             title: string;
             /** Filename */
             filename: string | null;
+            /** Source Url */
+            source_url: string | null;
             /** Is Active */
             is_active: boolean;
             /** Char Count */
@@ -2636,6 +2686,70 @@ export interface operations {
         responses: {
             /** @description Successful Response */
             201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KbDocumentOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    import_from_url_api_v1_kb_from_url_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["KbDocumentFromUrl"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KbDocumentOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    refresh_from_url_api_v1_kb__doc_id__refresh_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                doc_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };

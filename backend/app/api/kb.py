@@ -11,7 +11,8 @@ from ..db import get_db
 from ..errors import ApiError
 from ..llm import extract_text
 from ..models import AppUser, KbDocument, Store
-from ..schemas import KbDocumentIn, KbDocumentOut, KbDocumentPatch
+from ..schemas import KbDocumentFromUrl, KbDocumentIn, KbDocumentOut, KbDocumentPatch
+from ..webfetch import fetch_url_text
 
 router = APIRouter(tags=["kb"], dependencies=[Depends(require_role("admin"))])
 
@@ -24,6 +25,7 @@ def _out(d: KbDocument) -> KbDocumentOut:
         store_id=d.store_id,
         title=d.title,
         filename=d.filename,
+        source_url=d.source_url,
         is_active=d.is_active,
         char_count=len(d.body_text or ""),
         created_at=d.created_at,
@@ -73,6 +75,35 @@ async def upload_doc(
         store_id=store_id, title=title, filename=file.filename, body_text=text, created_by=user.id
     )
     db.add(doc)
+    db.commit()
+    return _out(doc)
+
+
+@router.post("/kb/from-url", response_model=KbDocumentOut, status_code=201)
+def import_from_url(body: KbDocumentFromUrl, db: Session = Depends(get_db), user: AppUser = Depends(require_role("admin"))):
+    _check_store(db, body.store_id)
+    title, text = fetch_url_text(body.url)
+    doc = KbDocument(
+        store_id=body.store_id,
+        title=(body.title or title or body.url)[:200],
+        source_url=body.url.strip(),
+        body_text=text,
+        created_by=user.id,
+    )
+    db.add(doc)
+    db.commit()
+    return _out(doc)
+
+
+@router.post("/kb/{doc_id}/refresh", response_model=KbDocumentOut)
+def refresh_from_url(doc_id: int, db: Session = Depends(get_db)):
+    doc = db.get(KbDocument, doc_id)
+    if doc is None:
+        raise ApiError(404, "not_found", "Document not found")
+    if not doc.source_url:
+        raise ApiError(400, "not_from_url", "This document was not imported from a URL")
+    _, text = fetch_url_text(doc.source_url)
+    doc.body_text = text
     db.commit()
     return _out(doc)
 

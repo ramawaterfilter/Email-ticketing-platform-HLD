@@ -1229,7 +1229,7 @@
           "tickets"
         ],
         "summary": "Get Suggestion",
-        "description": "The LLM draft for the newest customer message on this ticket (null if none yet).",
+        "description": "The LLM draft for the newest customer message on this ticket.\n\nOn-demand: if the ticket has no draft yet and the AI is enabled, opening it\nqueues one here (the worker fills it in; the client polls while it is pending).\nNew inbound mail already queues a draft at ingest, so this only backfills the\ntickets an agent actually opens.",
         "operationId": "get_suggestion_api_v1_tickets__ticket_id__suggestion_get",
         "parameters": [
           {
@@ -1693,6 +1693,89 @@
         },
         "responses": {
           "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KbDocumentOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/kb/from-url": {
+      "post": {
+        "tags": [
+          "kb"
+        ],
+        "summary": "Import From Url",
+        "operationId": "import_from_url_api_v1_kb_from_url_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/KbDocumentFromUrl"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KbDocumentOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/kb/{doc_id}/refresh": {
+      "post": {
+        "tags": [
+          "kb"
+        ],
+        "summary": "Refresh From Url",
+        "operationId": "refresh_from_url_api_v1_kb__doc_id__refresh_post",
+        "parameters": [
+          {
+            "name": "doc_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Doc Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
             "description": "Successful Response",
             "content": {
               "application/json": {
@@ -2351,6 +2434,46 @@
         "type": "object",
         "title": "HTTPValidationError"
       },
+      "KbDocumentFromUrl": {
+        "properties": {
+          "url": {
+            "type": "string",
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Url"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 200,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "store_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Store Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "url"
+        ],
+        "title": "KbDocumentFromUrl"
+      },
       "KbDocumentIn": {
         "properties": {
           "title": {
@@ -2416,6 +2539,17 @@
             ],
             "title": "Filename"
           },
+          "source_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Url"
+          },
           "is_active": {
             "type": "boolean",
             "title": "Is Active"
@@ -2436,6 +2570,7 @@
           "store_id",
           "title",
           "filename",
+          "source_url",
           "is_active",
           "char_count",
           "created_at"

@@ -292,6 +292,7 @@ class KbDocumentOut(Out):
     store_id: int | None
     title: str
     filename: str | None
+    source_url: str | None
     is_active: bool
     char_count: int
     created_at: datetime
@@ -307,6 +308,12 @@ class KbDocumentPatch(In):
     title: str | None = Field(None, min_length=1, max_length=200)
     store_id: int | None = None
     is_active: bool | None = None
+
+
+class KbDocumentFromUrl(In):
+    url: str = Field(min_length=1, max_length=2000)
+    title: str | None = Field(None, min_length=1, max_length=200)  # defaults to the page title
+    store_id: int | None = None  # null = shared across all stores
 
 
 class SuggestionOut(Out):
