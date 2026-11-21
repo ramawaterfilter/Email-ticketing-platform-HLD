@@ -1,0 +1,21 @@
+# DESK_SITE_ADDRESS is a domain in production (e.g. desk.example.com), which makes Caddy
+# obtain an HTTPS certificate automatically. Without it, plain HTTP on port 80 for local runs.
+{$DESK_SITE_ADDRESS::80} {
+	encode gzip
+
+	header {
+		X-Content-Type-Options nosniff
+		X-Frame-Options DENY
+		Referrer-Policy same-origin
+	}
+
+	handle /api/* {
+		reverse_proxy api:8000
+	}
+
+	handle {
+		root * /srv
+		try_files {path} /index.html
+		file_server
+	}
+}
