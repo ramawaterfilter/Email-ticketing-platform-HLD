@@ -3,13 +3,15 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from ..audit import record as log_audit
 from ..auth import current_user, require_role
 from ..config import settings
 from ..db import get_db
 from ..errors import ApiError
-from ..models import AppUser, Setting, SlaPolicy, Store
+from ..models import AppUser, AuditLog, Setting, SlaPolicy, Store
 from ..schemas import (
     AlertSettings,
+    AuditLogOut,
     BusinessHours,
     LlmSettingsIn,
     LlmSettingsOut,
@@ -58,8 +60,8 @@ def _apply_shopify(store: Store, data: dict) -> None:
         store.shopify_token_enc = encrypt(token) if token else None
 
 
-@router.post("/stores", response_model=StoreOut, status_code=201, dependencies=[Depends(admin)])
-def create_store(body: StoreIn, db: Session = Depends(get_db)):
+@router.post("/stores", response_model=StoreOut, status_code=201)
+def create_store(body: StoreIn, db: Session = Depends(get_db), actor: AppUser = Depends(admin)):
     data = body.model_dump()
     store = Store()
     _apply_shopify(store, data)
@@ -67,19 +69,23 @@ def create_store(body: StoreIn, db: Session = Depends(get_db)):
         setattr(store, field, value)
     db.add(store)
     _commit(db, "store_exists", "A store with this name already exists")
+    log_audit(db, actor, "store.create", target_type="store", target_id=store.id, summary=f"Created store “{store.name}”")
+    db.commit()
     return store
 
 
-@router.patch("/stores/{store_id}", response_model=StoreOut, dependencies=[Depends(admin)])
-def update_store(store_id: int, body: StorePatch, db: Session = Depends(get_db)):
+@router.patch("/stores/{store_id}", response_model=StoreOut)
+def update_store(store_id: int, body: StorePatch, db: Session = Depends(get_db), actor: AppUser = Depends(admin)):
     store = db.get(Store, store_id)
     if store is None:
         raise ApiError(404, "not_found", "Store not found")
     data = body.model_dump(exclude_unset=True)
+    fields = sorted(data.keys())  # field names only, never values (e.g. no shopify_token value)
     _apply_shopify(store, data)
     for field, value in data.items():
         if value is not None:
             setattr(store, field, value)
+    log_audit(db, actor, "store.update", target_type="store", target_id=store.id, summary=f"Updated store “{store.name}”", fields=fields)
     _commit(db, "store_exists", "A store with this name already exists")
     return store
 
@@ -89,8 +95,8 @@ def list_users(db: Session = Depends(get_db)):
     return db.scalars(select(AppUser).order_by(AppUser.email)).all()
 
 
-@router.post("/users", response_model=UserOut, status_code=201, dependencies=[Depends(admin)])
-def create_user(body: UserIn, db: Session = Depends(get_db)):
+@router.post("/users", response_model=UserOut, status_code=201)
+def create_user(body: UserIn, db: Session = Depends(get_db), actor: AppUser = Depends(admin)):
     email = body.email.lower()
     if email.rsplit("@", 1)[-1] not in settings.domains:
         raise ApiError(400, "domain_not_allowed", "This email is outside the allowed company domains")
@@ -103,6 +109,8 @@ def create_user(body: UserIn, db: Session = Depends(get_db)):
     )
     db.add(user)
     _commit(db, "user_exists", "This person has already been added")
+    log_audit(db, actor, "user.create", target_type="user", target_id=user.id, summary=f"Added {user.email} as {user.role}", role=user.role)
+    db.commit()
     return user
 
 
@@ -115,10 +123,12 @@ def update_user(user_id: int, body: UserPatch, db: Session = Depends(get_db), me
     # An admin can never remove their own access, so at least one active admin always remains.
     if user.id == me.id and (data.get("role", "admin") != "admin" or data.get("is_active") is False):
         raise ApiError(400, "self_lockout", "You cannot remove your own admin access")
+    fields = sorted(data.keys())
     if "store_ids" in data:
         user.stores = _stores(db, data.pop("store_ids"))
     for field, value in data.items():
         setattr(user, field, value)
+    log_audit(db, me, "user.update", target_type="user", target_id=user.id, summary=f"Updated {user.email}", fields=fields)
     db.commit()
     return user
 
@@ -136,8 +146,8 @@ def list_sla_policies(db: Session = Depends(get_db)):
     return rows
 
 
-@router.put("/sla-policies", response_model=SlaPolicyOut, dependencies=[Depends(admin)])
-def upsert_sla_policy(body: SlaPolicyIn, db: Session = Depends(get_db)):
+@router.put("/sla-policies", response_model=SlaPolicyOut)
+def upsert_sla_policy(body: SlaPolicyIn, db: Session = Depends(get_db), actor: AppUser = Depends(admin)):
     if body.store_id is not None and db.get(Store, body.store_id) is None:
         raise ApiError(400, "unknown_store", "That store does not exist")
     policy = db.scalar(select(SlaPolicy).where(SlaPolicy.store_id.is_(body.store_id) if body.store_id is None
@@ -148,6 +158,11 @@ def upsert_sla_policy(body: SlaPolicyIn, db: Session = Depends(get_db)):
     policy.first_response_min = body.first_response_min
     policy.next_response_min = body.next_response_min
     policy.resolution_min = body.resolution_min
+    scope = f"store {body.store_id}" if body.store_id else "default"
+    log_audit(db, actor, "sla.update", target_type="sla_policy", target_id=body.store_id,
+              summary=f"Updated SLA policy ({scope})",
+              first_response_min=body.first_response_min, next_response_min=body.next_response_min,
+              resolution_min=body.resolution_min)
     db.commit()
     return policy
 
@@ -173,14 +188,16 @@ def get_business_hours(db: Session = Depends(get_db)):
     return _get_setting(db, "business_hours", DEFAULT_BUSINESS_HOURS)
 
 
-@router.put("/settings/business-hours", response_model=BusinessHours, dependencies=[Depends(admin)])
-def put_business_hours(body: BusinessHours, db: Session = Depends(get_db)):
+@router.put("/settings/business-hours", response_model=BusinessHours)
+def put_business_hours(body: BusinessHours, db: Session = Depends(get_db), actor: AppUser = Depends(admin)):
     from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
     try:
         ZoneInfo(body.timezone)
     except (ZoneInfoNotFoundError, ValueError):
         raise ApiError(400, "bad_timezone", "Unknown timezone")
+    log_audit(db, actor, "settings.business_hours", target_type="setting", target_id="business_hours",
+              summary="Updated business hours", timezone=body.timezone)
     _put_setting(db, "business_hours", body.model_dump())
     return body
 
@@ -190,10 +207,32 @@ def get_alerts(db: Session = Depends(get_db)):
     return _get_setting(db, "alerts", {"manager_emails": [], "google_chat_webhook": None})
 
 
-@router.put("/settings/alerts", response_model=AlertSettings, dependencies=[Depends(admin)])
-def put_alerts(body: AlertSettings, db: Session = Depends(get_db)):
+@router.put("/settings/alerts", response_model=AlertSettings)
+def put_alerts(body: AlertSettings, db: Session = Depends(get_db), actor: AppUser = Depends(admin)):
+    log_audit(db, actor, "settings.alerts", target_type="setting", target_id="alerts",
+              summary="Updated alert settings", manager_emails=len(body.manager_emails),
+              google_chat_webhook_set=bool(body.google_chat_webhook))
     _put_setting(db, "alerts", body.model_dump())
     return body
+
+
+# ---- Audit log (critical-change history) ----
+
+
+@router.get("/audit", response_model=list[AuditLogOut], dependencies=[Depends(admin)])
+def list_audit(db: Session = Depends(get_db), limit: int = 200, action: str | None = None):
+    q = select(AuditLog, AppUser.email).join(AppUser, AuditLog.actor_user_id == AppUser.id, isouter=True)
+    if action:
+        q = q.where(AuditLog.action == action)
+    rows = db.execute(q.order_by(AuditLog.created_at.desc()).limit(min(max(limit, 1), 500))).all()
+    return [
+        AuditLogOut(
+            id=log.id, actor_user_id=log.actor_user_id, actor_email=email, action=log.action,
+            target_type=log.target_type, target_id=log.target_id, summary=log.summary,
+            data=log.data or {}, created_at=log.created_at,
+        )
+        for log, email in rows
+    ]
 
 
 # ---- AI provider (LLM) settings (Phase 2) ----
@@ -218,8 +257,8 @@ def get_llm(db: Session = Depends(get_db)):
     )
 
 
-@router.put("/settings/llm", response_model=LlmSettingsOut, dependencies=[Depends(admin)])
-def put_llm(body: LlmSettingsIn, db: Session = Depends(get_db)):
+@router.put("/settings/llm", response_model=LlmSettingsOut)
+def put_llm(body: LlmSettingsIn, db: Session = Depends(get_db), actor: AppUser = Depends(admin)):
     from ..crypto import encrypt
 
     row = db.get(Setting, "llm")
@@ -239,6 +278,11 @@ def put_llm(body: LlmSettingsIn, db: Session = Depends(get_db)):
     if body.embedding_api_key is not None:  # None = keep; "" = clear
         key = body.embedding_api_key.strip()
         v["embedding_api_key_enc"] = encrypt(key) if key else None
+    # Never log key values — only whether they changed.
+    log_audit(db, actor, "llm.settings", target_type="setting", target_id="llm",
+              summary="Updated AI provider settings", provider=v.get("provider"), model=v.get("model"),
+              embedding_model=v.get("embedding_model"), api_key_changed=body.api_key is not None,
+              embedding_key_changed=body.embedding_api_key is not None)
     _put_setting(db, "llm", v)
     return get_llm(db)
 

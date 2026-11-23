@@ -393,6 +393,18 @@ class Report(Out):
     by_store: list[ReportStoreRow]
 
 
+class AuditLogOut(Out):
+    id: int
+    actor_user_id: int | None
+    actor_email: str | None
+    action: str
+    target_type: str | None
+    target_id: str | None
+    summary: str
+    data: dict
+    created_at: datetime
+
+
 class LlmSettingsOut(Out):
     provider: str | None
     model: str | None
