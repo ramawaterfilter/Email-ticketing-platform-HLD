@@ -136,13 +136,14 @@ def embed_pending_chunks(db: Session, limit: int = 200) -> int:
         batch = pending[i : i + EMBED_BATCH]
         try:
             vectors = embedder.embed([c.body for c in batch])
-        except Exception:  # noqa: BLE001 - provider error; leave them pending for the next tick
-            log.exception("embedding call failed")
+            for chunk, vector in zip(batch, vectors):
+                chunk.embedding = vector
+                chunk.model = embedder.model
+            db.commit()
+        except Exception:  # noqa: BLE001 - provider down, or chunks re-indexed mid-flight; retry next tick
+            log.exception("embedding batch failed")
+            db.rollback()
             break
-        for chunk, vector in zip(batch, vectors):
-            chunk.embedding = vector
-            chunk.model = embedder.model
-        db.commit()
         done += len(batch)
     return done
 
