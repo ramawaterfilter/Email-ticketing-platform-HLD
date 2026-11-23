@@ -1,6 +1,6 @@
 import { Badge, Group, Loader, SegmentedControl, Stack, Table, Tabs, Text, TextInput, Title } from "@mantine/core";
 import { useState } from "react";
-import { useNavigate } from "react-router";
+import { useNavigate, useSearchParams } from "react-router";
 
 import { type TicketListItem, useTickets } from "../api";
 
@@ -31,9 +31,18 @@ function dueStatus(t: TicketListItem): { text: string; color: string } {
 }
 
 export default function Inbox() {
-  const [tab, setTab] = useState("mine");
+  const [params, setParams] = useSearchParams();
+  // Tab + SLA filter live in the URL, so a view is shareable and the back button works.
+  const setParam = (key: string, value: string, fallback: string) =>
+    setParams((prev) => {
+      const next = new URLSearchParams(prev);
+      if (value === fallback) next.delete(key);
+      else next.set(key, value);
+      return next;
+    });
+  const tab = TABS.some((t) => t.value === params.get("tab")) ? params.get("tab")! : "mine";
+  const sla = params.get("sla") ?? "all";
   const [search, setSearch] = useState("");
-  const [sla, setSla] = useState("all");
   const active = TABS.find((t) => t.value === tab)!;
   let query = active.query;
   if (search.trim()) query += `&q=${encodeURIComponent(search.trim())}`;
@@ -53,7 +62,7 @@ export default function Inbox() {
       </Group>
 
       <Group justify="space-between">
-        <Tabs value={tab} onChange={(v) => v && setTab(v)}>
+        <Tabs value={tab} onChange={(v) => v && setParam("tab", v, "mine")}>
           <Tabs.List>
             {TABS.map((t) => (
               <Tabs.Tab key={t.value} value={t.value}>
@@ -66,7 +75,7 @@ export default function Inbox() {
           <SegmentedControl
             size="xs"
             value={sla}
-            onChange={setSla}
+            onChange={(v) => setParam("sla", v, "all")}
             data={[
               { value: "all", label: "All" },
               { value: "due_soon", label: "Due soon" },
