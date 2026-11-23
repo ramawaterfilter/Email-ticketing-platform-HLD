@@ -28,9 +28,17 @@ export default function Kb() {
   const [adding, setAdding] = useState(false);
   const refresh = () => queryClient.invalidateQueries({ queryKey: ["kb"] });
 
-  const storeName = (id: number | null) => (id === null ? "Shared (all stores)" : stores.data?.find((s) => s.id === id)?.name ?? id);
+  const scopeOptions = [
+    { value: "shared", label: "Shared (all stores)" },
+    ...(stores.data ?? []).map((s) => ({ value: String(s.id), label: s.name })),
+  ];
   const toggle = useMutation({
     mutationFn: (d: KbDocument) => api(`/kb/${d.id}`, "PATCH", { is_active: !d.is_active }),
+    onSuccess: refresh,
+  });
+  const setScope = useMutation({
+    mutationFn: ({ id, value }: { id: number; value: string }) =>
+      api(`/kb/${id}`, "PATCH", { store_id: value === "shared" ? null : Number(value) }),
     onSuccess: refresh,
   });
   const remove = useMutation({ mutationFn: (id: number) => api(`/kb/${id}`, "DELETE"), onSuccess: refresh });
@@ -85,9 +93,15 @@ export default function Kb() {
                 )}
               </Table.Td>
               <Table.Td>
-                <Badge variant="light" color={d.store_id === null ? "grape" : "blue"}>
-                  {storeName(d.store_id)}
-                </Badge>
+                <Select
+                  size="xs"
+                  w={190}
+                  data={scopeOptions}
+                  value={d.store_id === null ? "shared" : String(d.store_id)}
+                  allowDeselect={false}
+                  disabled={setScope.isPending && setScope.variables?.id === d.id}
+                  onChange={(value) => value && setScope.mutate({ id: d.id, value })}
+                />
               </Table.Td>
               <Table.Td>
                 {d.char_count.toLocaleString()} chars
