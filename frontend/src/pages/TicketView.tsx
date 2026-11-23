@@ -32,7 +32,7 @@ import {
 } from "@tabler/icons-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
-import { useParams } from "react-router";
+import { Link, useParams } from "react-router";
 
 import {
   api,
@@ -78,6 +78,12 @@ function Loaded({ t }: { t: TicketDetail }) {
 
   return (
     <Stack>
+      <Anchor component={Link} to="/" size="sm" c="dimmed" w="fit-content">
+        <Group gap={4} wrap="nowrap">
+          <IconArrowBackUp size={16} />
+          Back to tickets
+        </Group>
+      </Anchor>
       <Group justify="space-between" align="flex-start" wrap="nowrap">
         <div style={{ minWidth: 0 }}>
           <Title order={3} style={{ overflowWrap: "anywhere" }}>
