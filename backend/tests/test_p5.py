@@ -54,6 +54,27 @@ def test_reindex_and_embed_pending(monkeypatch):
         assert embed_pending_chunks(db) == 0  # nothing left to do
 
 
+def test_reindex_inline_embeds_and_keeps_vectors_when_unchanged(monkeypatch):
+    _use_fake_embedder(monkeypatch)
+    with SessionLocal() as db:
+        store = make_store(db)
+        doc = KbDocument(store_id=store.id, title="Returns", body_text="Refund and return within 30 days.")
+        db.add(doc)
+        db.flush()
+        reindex_document(db, doc, embed_now=True)  # zero-downtime: embed before commit
+        db.commit()
+        assert embed_pending_chunks(db) == 0  # already embedded inline, nothing pending
+        ids_before = sorted(c.id for c in db.query(KbChunk).filter(KbChunk.document_id == doc.id))
+        assert ids_before and all(
+            c.embedding is not None for c in db.query(KbChunk).filter(KbChunk.document_id == doc.id)
+        )
+        # Unchanged refresh must preserve the exact rows (no delete/re-embed gap).
+        reindex_document(db, doc, embed_now=True)
+        db.commit()
+        ids_after = sorted(c.id for c in db.query(KbChunk).filter(KbChunk.document_id == doc.id))
+        assert ids_after == ids_before
+
+
 def test_retrieve_returns_the_most_relevant_document(monkeypatch):
     _use_fake_embedder(monkeypatch)
     with SessionLocal() as db:

@@ -103,13 +103,44 @@ def get_embedder(db: Session) -> Embedder | None:
 # ---- indexing ----
 
 
-def reindex_document(db: Session, doc: KbDocument) -> int:
-    """Replace a document's chunks (embeddings left null for the worker). Caller commits."""
+def reindex_document(db: Session, doc: KbDocument, embed_now: bool = False) -> int:
+    """Re-chunk a document. Caller commits.
+
+    Zero-downtime: if the text is unchanged and already embedded, the existing
+    chunks are kept (only scope/title re-synced) so a no-op refresh never drops
+    the embeddings. When the text changed and embed_now is set, the new chunks
+    are embedded *before* the old ones are deleted in the same transaction, so
+    retrieval keeps serving the old vectors until the new ones are committed.
+    """
+    new_bodies = chunk_text(doc.body_text or "")
+    existing = db.scalars(
+        select(KbChunk).where(KbChunk.document_id == doc.id).order_by(KbChunk.ordinal)
+    ).all()
+    if existing and [c.body for c in existing] == new_bodies and all(c.embedding is not None for c in existing):
+        for c in existing:  # content identical: keep vectors, just sync metadata
+            c.store_id, c.title = doc.store_id, doc.title
+        return len(existing)
+
+    vectors: list[list[float]] | None = None
+    model: str | None = None
+    if embed_now and new_bodies:
+        embedder = get_embedder(db)
+        if embedder is not None:
+            try:
+                vectors = [v for i in range(0, len(new_bodies), EMBED_BATCH)
+                           for v in embedder.embed(new_bodies[i : i + EMBED_BATCH])]
+                model = embedder.model
+            except Exception:  # noqa: BLE001 - provider down; fall back to worker, accept a brief gap
+                log.exception("inline embedding failed; leaving chunks for the worker")
+                vectors = None
+
     db.execute(delete(KbChunk).where(KbChunk.document_id == doc.id))
-    chunks = chunk_text(doc.body_text or "")
-    for i, body in enumerate(chunks):
-        db.add(KbChunk(document_id=doc.id, store_id=doc.store_id, title=doc.title, ordinal=i, body=body))
-    return len(chunks)
+    for i, body in enumerate(new_bodies):
+        db.add(KbChunk(
+            document_id=doc.id, store_id=doc.store_id, title=doc.title, ordinal=i, body=body,
+            embedding=(vectors[i] if vectors else None), model=(model if vectors else None),
+        ))
+    return len(new_bodies)
 
 
 def reindex_all(db: Session) -> int:

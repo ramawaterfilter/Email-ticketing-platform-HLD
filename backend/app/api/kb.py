@@ -132,9 +132,9 @@ def refresh_from_url(doc_id: int, db: Session = Depends(get_db)):
         raise ApiError(400, "not_from_url", "This document was not imported from a URL")
     _, text = fetch_url_text(doc.source_url)
     doc.body_text = text
-    n = reindex_document(db, doc)
+    reindex_document(db, doc, embed_now=True)  # embed before swapping, so old vectors serve until new land
     db.commit()
-    return _out(doc, chunks=n, embedded=0)
+    return _out(doc, *_count_for(db, doc.id))
 
 
 @router.patch("/kb/{doc_id}", response_model=KbDocumentOut)
