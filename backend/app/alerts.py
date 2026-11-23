@@ -45,6 +45,9 @@ def notify(db: Session, emails: list[str], subject: str, body: str, factory=clie
 def _email(db: Session, emails: list[str], subject: str, body: str, factory) -> None:
     if not emails:
         return
+    row = db.get(Setting, "alerts")
+    if row and (row.value or {}).get("mute_alert_emails"):
+        return  # alert emails turned off in settings
     mailbox = db.scalar(select(Mailbox).where(Mailbox.status == "active").order_by(Mailbox.id))
     if mailbox is None:
         log.warning("no active mailbox to send alert from: %s", subject)

@@ -91,6 +91,19 @@ def test_safe_mode_blocks_customer_reply_but_not_alerts(desk):
     assert len(fake.sent) == 1  # the alert went out even though customer replies are blocked
 
 
+def test_mute_alert_emails_suppresses_internal_alerts(desk):
+    from app import alerts
+    from app.models import Setting
+
+    db, store, mailbox, ticket, agent = desk
+    db.add(Setting(key="alerts", value={"mute_alert_emails": True}))
+    db.commit()
+
+    fake = FakeGmail()
+    alerts.notify(db, ["manager@example.com"], "SLA breach", "body", factory=lambda _m: fake)
+    assert fake.sent == []  # alert emails are turned off
+
+
 def test_reply_is_idempotent_on_client_request_id(desk):
     db, store, mailbox, ticket, agent = desk
     fake = FakeGmail()

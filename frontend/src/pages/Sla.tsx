@@ -169,18 +169,23 @@ function AlertsCard() {
   const alerts = useQuery({
     queryKey: ["alert-settings"],
     queryFn: () =>
-      api<{ manager_emails: string[]; google_chat_webhook: string | null; block_customer_email: boolean }>(
-        "/settings/alerts",
-      ),
+      api<{
+        manager_emails: string[];
+        google_chat_webhook: string | null;
+        block_customer_email: boolean;
+        mute_alert_emails: boolean;
+      }>("/settings/alerts"),
   });
   const [emails, setEmails] = useState("");
   const [webhook, setWebhook] = useState("");
   const [blockEmail, setBlockEmail] = useState(false);
+  const [muteAlerts, setMuteAlerts] = useState(false);
   useEffect(() => {
     if (alerts.data) {
       setEmails(alerts.data.manager_emails.join("\n"));
       setWebhook(alerts.data.google_chat_webhook ?? "");
       setBlockEmail(alerts.data.block_customer_email);
+      setMuteAlerts(alerts.data.mute_alert_emails);
     }
   }, [alerts.data]);
 
@@ -190,6 +195,7 @@ function AlertsCard() {
         manager_emails: emails.split("\n").map((s) => s.trim()).filter(Boolean),
         google_chat_webhook: webhook.trim() || null,
         block_customer_email: blockEmail,
+        mute_alert_emails: muteAlerts,
       }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["alert-settings"] }),
   });
@@ -216,6 +222,12 @@ function AlertsCard() {
           description="Blocks all replies to customers. Internal alerts to managers and assignees still go out. Useful for testing or a public demo."
           checked={blockEmail}
           onChange={(e) => setBlockEmail(e.currentTarget.checked)}
+        />
+        <Switch
+          label="Mute alert emails"
+          description="Stops the SLA breach / unassigned alert emails to managers and admins. Google Chat alerts (if set) still post."
+          checked={muteAlerts}
+          onChange={(e) => setMuteAlerts(e.currentTarget.checked)}
         />
         <Group justify="flex-end">
           <Button loading={save.isPending} onClick={() => save.mutate()}>

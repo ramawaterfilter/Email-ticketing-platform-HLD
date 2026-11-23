@@ -262,6 +262,8 @@ class AlertSettings(In):
     # Safe mode: when true, the app never emails customers (replies are refused);
     # internal alerts to managers/assignees still go out.
     block_customer_email: bool = False
+    # When true, suppress the internal alert *emails* (SLA breach, unassigned, etc.).
+    mute_alert_emails: bool = False
 
 
 class Count(Out):
