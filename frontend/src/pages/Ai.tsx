@@ -24,6 +24,9 @@ type LlmSettings = {
   base_url: string | null;
   configured: boolean;
   apply_priority: boolean;
+  embedding_model: string | null;
+  embedding_base_url: string | null;
+  embedding_configured: boolean;
 };
 
 // A few common OpenAI-compatible endpoints, shown as hints.
@@ -44,6 +47,9 @@ export default function Ai() {
   const [baseUrl, setBaseUrl] = useState("");
   const [apiKey, setApiKey] = useState("");
   const [applyPriority, setApplyPriority] = useState(true);
+  const [embeddingModel, setEmbeddingModel] = useState("");
+  const [embeddingBaseUrl, setEmbeddingBaseUrl] = useState("");
+  const [embeddingKey, setEmbeddingKey] = useState("");
   const [testResult, setTestResult] = useState<string | null>(null);
 
   useEffect(() => {
@@ -52,6 +58,8 @@ export default function Ai() {
       setModel(current.data.model ?? "");
       setBaseUrl(current.data.base_url ?? "");
       setApplyPriority(current.data.apply_priority);
+      setEmbeddingModel(current.data.embedding_model ?? "");
+      setEmbeddingBaseUrl(current.data.embedding_base_url ?? "");
     }
   }, [current.data]);
 
@@ -62,11 +70,15 @@ export default function Ai() {
         model: model.trim() || null,
         base_url: provider === "openai" ? baseUrl.trim() || null : null,
         apply_priority: applyPriority,
-        // Only send the key if the admin typed one, so saving other fields keeps it.
+        embedding_model: embeddingModel.trim(),
+        embedding_base_url: embeddingBaseUrl.trim(),
+        // Only send keys if the admin typed one, so saving other fields keeps them.
         ...(apiKey ? { api_key: apiKey } : {}),
+        ...(embeddingKey ? { embedding_api_key: embeddingKey } : {}),
       }),
     onSuccess: () => {
       setApiKey("");
+      setEmbeddingKey("");
       setTestResult(null);
       queryClient.invalidateQueries({ queryKey: ["llm"] });
     },
@@ -152,6 +164,36 @@ export default function Ai() {
             checked={applyPriority}
             onChange={(e) => setApplyPriority(e.currentTarget.checked)}
           />
+
+          <TextInput
+            label="Embedding model (optional)"
+            description="Turns on semantic search over the knowledge base, so a large policy library scales — only the most relevant passages go into each draft. Leave blank to inject whole documents. After setting it, run Reindex on the Knowledge base screen."
+            placeholder="e.g. text-embedding-3-small, or your provider's embeddings model"
+            value={embeddingModel}
+            onChange={(e) => setEmbeddingModel(e.currentTarget.value)}
+          />
+          {embeddingModel.trim() && (
+            <>
+              <TextInput
+                label="Embedding endpoint (optional)"
+                description="Leave blank to reuse the endpoint above. Set this to use a different embeddings provider (e.g. OpenAI's https://api.openai.com/v1) while chat stays on the provider above."
+                placeholder="https://api.openai.com/v1"
+                value={embeddingBaseUrl}
+                onChange={(e) => setEmbeddingBaseUrl(e.currentTarget.value)}
+              />
+              <PasswordInput
+                label="Embedding API key (optional)"
+                description={
+                  current.data?.embedding_configured
+                    ? "A separate embedding key is saved. Leave blank to keep it."
+                    : "Leave blank to reuse the key above, or enter a key for the embedding endpoint."
+                }
+                placeholder={current.data?.embedding_configured ? "•••••••• (saved)" : "sk-…"}
+                value={embeddingKey}
+                onChange={(e) => setEmbeddingKey(e.currentTarget.value)}
+              />
+            </>
+          )}
 
           {save.isError && <Alert color="red">{(save.error as Error).message}</Alert>}
           {testResult && <Alert color={testResult.startsWith("✓") ? "green" : "red"}>{testResult}</Alert>}

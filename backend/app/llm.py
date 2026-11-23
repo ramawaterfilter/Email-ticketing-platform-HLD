@@ -202,10 +202,15 @@ def _kb_documents(db: Session, store_id: int) -> list[KbDocument]:
     )
 
 
-def _store_block(store: Store, docs: list[KbDocument]) -> tuple[str, list[dict]]:
+def _store_header(store: Store) -> str:
     parts = [f"STORE: {store.name}"]
     if store.ai_guidance.strip():
         parts.append(f"BRAND TONE AND REPLY RULES:\n{store.ai_guidance.strip()}")
+    return "\n\n".join(parts)
+
+
+def _store_block(store: Store, docs: list[KbDocument]) -> tuple[str, list[dict]]:
+    parts = [_store_header(store)]
     used: list[dict] = []
     budget = MAX_KB_CHARS
     if docs:
@@ -289,13 +294,7 @@ def past_ticket_examples(db: Session, ticket: Ticket, store: Store, query_text: 
 
 
 def build_prompt(db: Session, ticket: Ticket, store: Store, shopify=None) -> tuple[list[dict], str, dict]:
-    docs = _kb_documents(db, store.id)
-    store_text, used = _store_block(store, docs)
-    system = [
-        {"type": "text", "text": TASK_INSTRUCTIONS},
-        # Cache the per-store block: it is stable across the many messages for one store.
-        {"type": "text", "text": store_text, "cache_control": {"type": "ephemeral"}},
-    ]
+    from .kb_index import get_embedder, retrieve
 
     latest = db.scalar(
         select(Message).where(Message.ticket_id == ticket.id, Message.direction == "inbound")
@@ -303,8 +302,35 @@ def build_prompt(db: Session, ticket: Ticket, store: Store, shopify=None) -> tup
     )
     query_text = f"{ticket.subject} {latest.body_text if latest else ''}"
 
+    # When embeddings are configured, retrieve the most relevant passages (scales to a large KB).
+    # Otherwise, or until chunks are embedded, fall back to injecting the whole store KB.
+    embedder = get_embedder(db)
+    used: list[dict] = []
+    retrieval = "semantic" if embedder is not None else "whole"
+    if embedder is not None:
+        try:
+            passages, used = retrieve(db, store.id, query_text, embedder)
+        except Exception:  # noqa: BLE001 - embeddings endpoint down; degrade to whole-KB, never fail the draft
+            log.exception("semantic retrieval failed; falling back to whole KB")
+            used = []
+    if used:
+        store_text = (
+            _store_header(store)
+            + "\n\nPOLICIES AND REFERENCE DOCUMENTS (most relevant passages):\n"
+            + passages
+        )
+    else:
+        retrieval = "whole"
+        store_text, used = _store_block(store, _kb_documents(db, store.id))
+
+    system = [
+        {"type": "text", "text": TASK_INSTRUCTIONS},
+        # Cache the per-store block: stable across many messages for one store (whole-KB mode).
+        {"type": "text", "text": store_text, "cache_control": {"type": "ephemeral"}},
+    ]
+
     parts = [_thread_text(db, ticket)]
-    meta = {"documents": used, "orders": 0, "past_tickets": 0}
+    meta = {"documents": used, "orders": 0, "past_tickets": 0, "retrieval": retrieval}
 
     # Shopify order context for the sender's email only (privacy guard lives in the provider).
     if shopify is not None:

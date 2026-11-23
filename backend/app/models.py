@@ -17,6 +17,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.dialects.postgresql import CITEXT, JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+from pgvector.sqlalchemy import Vector
 
 from .db import Base
 
@@ -314,6 +315,24 @@ class CannedResponse(Base):
     body_text: Mapped[str] = mapped_column(Text, default="", server_default="")
     is_active: Mapped[bool] = mapped_column(default=True, server_default="true")
     created_by: Mapped[int | None] = mapped_column(ForeignKey("app_user.id", ondelete="SET NULL"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class KbChunk(Base):
+    """A slice of a KB document with its embedding, for semantic (vector) retrieval.
+    Created with a null embedding when the document changes; the worker fills it in."""
+
+    __tablename__ = "kb_chunk"
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
+    document_id: Mapped[int] = mapped_column(ForeignKey("kb_document.id", ondelete="CASCADE"), index=True)
+    # store_id is copied from the document so retrieval can filter without a join. null = shared.
+    store_id: Mapped[int | None] = mapped_column(ForeignKey("store.id", ondelete="CASCADE"), index=True)
+    title: Mapped[str] = mapped_column(Text, default="", server_default="")
+    ordinal: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    body: Mapped[str] = mapped_column(Text)
+    embedding: Mapped[list[float] | None] = mapped_column(Vector(), nullable=True)  # null = not embedded yet
+    model: Mapped[str | None] = mapped_column(Text)  # embedding model used
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 

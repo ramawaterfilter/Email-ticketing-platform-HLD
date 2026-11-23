@@ -98,6 +98,14 @@ def run_suggestions_once(factory=None) -> int:
     return done
 
 
+def run_kb_embeddings_once() -> int:
+    """Embed any knowledge-base chunks that are waiting for a vector."""
+    from .kb_index import embed_pending_chunks
+
+    with SessionLocal() as db:
+        return embed_pending_chunks(db)
+
+
 def run_reconcile_once(factory=client_for) -> int:
     recovered = 0
     with SessionLocal() as db:
@@ -120,6 +128,7 @@ def main() -> None:  # pragma: no cover - the loop itself is not unit-tested
         run_sync_once()
         run_sla_once()  # SLA warnings/breaches, unassigned alerts, auto-close, sync health
         run_suggestions_once()  # fill in pending LLM reply drafts
+        run_kb_embeddings_once()  # embed any new/changed knowledge-base chunks
         now = datetime.now(timezone.utc)
         if now.time() >= RECONCILE_AT and last_reconcile_date != now.date():
             log.info("nightly reconciliation")

@@ -35,12 +35,23 @@ export default function Kb() {
   });
   const remove = useMutation({ mutationFn: (id: number) => api(`/kb/${id}`, "DELETE"), onSuccess: refresh });
   const reimport = useMutation({ mutationFn: (id: number) => api(`/kb/${id}/refresh`, "POST"), onSuccess: refresh });
+  const reindex = useMutation({ mutationFn: () => api("/kb/reindex", "POST"), onSuccess: refresh });
 
   return (
     <Stack>
       <Group justify="space-between">
         <Title order={3}>Knowledge base</Title>
-        <Button onClick={() => setAdding(true)}>Add document</Button>
+        <Group gap="sm">
+          <Button
+            variant="default"
+            leftSection={<IconRefresh size={15} />}
+            loading={reindex.isPending}
+            onClick={() => reindex.mutate()}
+          >
+            Reindex
+          </Button>
+          <Button onClick={() => setAdding(true)}>Add document</Button>
+        </Group>
       </Group>
       <Text c="dimmed" size="sm">
         Policies and product information the AI uses to draft replies. Tag each to a store, or mark it shared.
@@ -78,7 +89,14 @@ export default function Kb() {
                   {storeName(d.store_id)}
                 </Badge>
               </Table.Td>
-              <Table.Td>{d.char_count.toLocaleString()} chars</Table.Td>
+              <Table.Td>
+                {d.char_count.toLocaleString()} chars
+                {d.chunks > 0 && (
+                  <Text size="xs" c={d.embedded === d.chunks ? "teal" : "dimmed"}>
+                    {d.embedded === d.chunks ? "Indexed" : `${d.embedded}/${d.chunks} embedded`}
+                  </Text>
+                )}
+              </Table.Td>
               <Table.Td>
                 <Badge color={d.is_active ? "green" : "gray"}>{d.is_active ? "Active" : "Off"}</Badge>
               </Table.Td>

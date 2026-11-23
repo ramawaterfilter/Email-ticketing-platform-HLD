@@ -641,6 +641,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/kb/reindex": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reindex
+         * @description Re-chunk every document (the worker then embeds the new chunks). Use after
+         *     turning embeddings on, or to rebuild the index.
+         */
+        post: operations["reindex_api_v1_kb_reindex_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/kb/{doc_id}/refresh": {
         parameters: {
             query?: never;
@@ -877,6 +898,16 @@ export interface components {
             /** Char Count */
             char_count: number;
             /**
+             * Chunks
+             * @default 0
+             */
+            chunks: number;
+            /**
+             * Embedded
+             * @default 0
+             */
+            embedded: number;
+            /**
              * Created At
              * Format: date-time
              */
@@ -917,6 +948,12 @@ export interface components {
             api_key?: string | null;
             /** Apply Priority */
             apply_priority?: boolean | null;
+            /** Embedding Model */
+            embedding_model?: string | null;
+            /** Embedding Base Url */
+            embedding_base_url?: string | null;
+            /** Embedding Api Key */
+            embedding_api_key?: string | null;
         };
         /** LlmSettingsOut */
         LlmSettingsOut: {
@@ -930,6 +967,12 @@ export interface components {
             configured: boolean;
             /** Apply Priority */
             apply_priority: boolean;
+            /** Embedding Model */
+            embedding_model: string | null;
+            /** Embedding Base Url */
+            embedding_base_url: string | null;
+            /** Embedding Configured */
+            embedding_configured: boolean;
         };
         /** MailboxDetail */
         MailboxDetail: {
@@ -2733,6 +2776,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    reindex_api_v1_kb_reindex_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                 };
             };
         };

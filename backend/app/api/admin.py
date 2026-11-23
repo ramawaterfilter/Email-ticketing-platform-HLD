@@ -212,6 +212,9 @@ def get_llm(db: Session = Depends(get_db)):
         base_url=v.get("base_url"),
         configured=cfg is not None,
         apply_priority=v.get("apply_priority", True),
+        embedding_model=v.get("embedding_model") or None,
+        embedding_base_url=v.get("embedding_base_url") or None,
+        embedding_configured=bool(v.get("embedding_api_key_enc")),
     )
 
 
@@ -229,6 +232,13 @@ def put_llm(body: LlmSettingsIn, db: Session = Depends(get_db)):
         v["api_key_enc"] = encrypt(key) if key else None
     if body.apply_priority is not None:
         v["apply_priority"] = body.apply_priority
+    if body.embedding_model is not None:  # "" turns semantic retrieval off
+        v["embedding_model"] = body.embedding_model.strip() or None
+    if body.embedding_base_url is not None:
+        v["embedding_base_url"] = body.embedding_base_url.strip() or None
+    if body.embedding_api_key is not None:  # None = keep; "" = clear
+        key = body.embedding_api_key.strip()
+        v["embedding_api_key_enc"] = encrypt(key) if key else None
     _put_setting(db, "llm", v)
     return get_llm(db)
 

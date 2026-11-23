@@ -1756,6 +1756,26 @@
         }
       }
     },
+    "/api/v1/kb/reindex": {
+      "post": {
+        "tags": [
+          "kb"
+        ],
+        "summary": "Reindex",
+        "description": "Re-chunk every document (the worker then embeds the new chunks). Use after\nturning embeddings on, or to rebuild the index.",
+        "operationId": "reindex_api_v1_kb_reindex_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/kb/{doc_id}/refresh": {
       "post": {
         "tags": [
@@ -2558,6 +2578,16 @@
             "type": "integer",
             "title": "Char Count"
           },
+          "chunks": {
+            "type": "integer",
+            "title": "Chunks",
+            "default": 0
+          },
+          "embedded": {
+            "type": "integer",
+            "title": "Embedded",
+            "default": 0
+          },
           "created_at": {
             "type": "string",
             "format": "date-time",
@@ -2703,6 +2733,42 @@
               }
             ],
             "title": "Apply Priority"
+          },
+          "embedding_model": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Embedding Model"
+          },
+          "embedding_base_url": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 300
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Embedding Base Url"
+          },
+          "embedding_api_key": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Embedding Api Key"
           }
         },
         "additionalProperties": false,
@@ -2754,6 +2820,32 @@
           "apply_priority": {
             "type": "boolean",
             "title": "Apply Priority"
+          },
+          "embedding_model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Embedding Model"
+          },
+          "embedding_base_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Embedding Base Url"
+          },
+          "embedding_configured": {
+            "type": "boolean",
+            "title": "Embedding Configured"
           }
         },
         "type": "object",
@@ -2762,7 +2854,10 @@
           "model",
           "base_url",
           "configured",
-          "apply_priority"
+          "apply_priority",
+          "embedding_model",
+          "embedding_base_url",
+          "embedding_configured"
         ],
         "title": "LlmSettingsOut"
       },

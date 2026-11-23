@@ -295,6 +295,8 @@ class KbDocumentOut(Out):
     source_url: str | None
     is_active: bool
     char_count: int
+    chunks: int = 0
+    embedded: int = 0
     created_at: datetime
 
 
@@ -388,6 +390,9 @@ class LlmSettingsOut(Out):
     base_url: str | None
     configured: bool
     apply_priority: bool
+    embedding_model: str | None  # set = semantic KB retrieval is on
+    embedding_base_url: str | None
+    embedding_configured: bool  # a dedicated embedding key is saved
 
 
 class LlmSettingsIn(In):
@@ -396,3 +401,6 @@ class LlmSettingsIn(In):
     base_url: str | None = Field(None, max_length=300)  # for OpenAI-compatible endpoints
     api_key: str | None = Field(None, max_length=500)  # omit to keep the saved key; "" clears it
     apply_priority: bool | None = None  # let the AI set ticket priority; omit to keep current
+    embedding_model: str | None = Field(None, max_length=100)  # "" turns semantic retrieval off
+    embedding_base_url: str | None = Field(None, max_length=300)  # optional separate embeddings endpoint
+    embedding_api_key: str | None = Field(None, max_length=500)  # optional; omit to keep, "" clears
