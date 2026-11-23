@@ -66,3 +66,21 @@ def test_import_from_url_is_admin_only(login, add_user, monkeypatch):
     monkeypatch.setattr(kb, "fetch_url_text", lambda _url: ("T", "body"))
     c = login("exec@example.com")
     assert c.post("/api/v1/kb/from-url", json={"url": "https://x.example/p"}).status_code == 403
+
+
+def test_kb_is_readable_by_staff_but_writable_only_by_admin(login, add_user):
+    add_user("admin@example.com", role="admin")
+    add_user("exec@example.com", role="executive")
+    admin = login("admin@example.com")
+    doc = admin.post("/api/v1/kb", json={"title": "Returns", "body_text": "30 day returns."}).json()
+    did = doc["id"]
+
+    exec_c = login("exec@example.com")
+    assert len(exec_c.get("/api/v1/kb").json()) == 1  # non-admins can see the knowledge base
+    # ...but every write is refused for them.
+    assert exec_c.post("/api/v1/kb", json={"title": "x", "body_text": "y"}).status_code == 403
+    assert exec_c.patch(f"/api/v1/kb/{did}", json={"store_id": None}).status_code == 403
+    assert exec_c.post("/api/v1/kb/reindex").status_code == 403
+    assert exec_c.delete(f"/api/v1/kb/{did}").status_code == 403
+    # Admin still can.
+    assert admin.patch(f"/api/v1/kb/{did}", json={"is_active": False}).status_code == 200

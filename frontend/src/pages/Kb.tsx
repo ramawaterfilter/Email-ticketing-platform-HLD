@@ -19,12 +19,14 @@ import { IconRefresh } from "@tabler/icons-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { type FormEvent, useState } from "react";
 
-import { api, type KbDocument, useStores } from "../api";
+import { api, type KbDocument, useMe, useStores } from "../api";
 
 export default function Kb() {
   const queryClient = useQueryClient();
   const docs = useQuery({ queryKey: ["kb"], queryFn: () => api<KbDocument[]>("/kb") });
   const stores = useStores();
+  const me = useMe();
+  const isAdmin = me.data?.role === "admin"; // only admins may change the knowledge base
   const [adding, setAdding] = useState(false);
   const refresh = () => queryClient.invalidateQueries({ queryKey: ["kb"] });
 
@@ -32,6 +34,8 @@ export default function Kb() {
     { value: "shared", label: "Shared (all stores)" },
     ...(stores.data ?? []).map((s) => ({ value: String(s.id), label: s.name })),
   ];
+  const scopeLabel = (id: number | null) =>
+    id === null ? "Shared (all stores)" : stores.data?.find((s) => s.id === id)?.name ?? `Store ${id}`;
   const toggle = useMutation({
     mutationFn: (d: KbDocument) => api(`/kb/${d.id}`, "PATCH", { is_active: !d.is_active }),
     onSuccess: refresh,
@@ -49,20 +53,23 @@ export default function Kb() {
     <Stack>
       <Group justify="space-between">
         <Title order={3}>Knowledge base</Title>
-        <Group gap="sm">
-          <Button
-            variant="default"
-            leftSection={<IconRefresh size={15} />}
-            loading={reindex.isPending}
-            onClick={() => reindex.mutate()}
-          >
-            Reindex
-          </Button>
-          <Button onClick={() => setAdding(true)}>Add document</Button>
-        </Group>
+        {isAdmin && (
+          <Group gap="sm">
+            <Button
+              variant="default"
+              leftSection={<IconRefresh size={15} />}
+              loading={reindex.isPending}
+              onClick={() => reindex.mutate()}
+            >
+              Reindex
+            </Button>
+            <Button onClick={() => setAdding(true)}>Add document</Button>
+          </Group>
+        )}
       </Group>
       <Text c="dimmed" size="sm">
-        Policies and product information the AI uses to draft replies. Tag each to a store, or mark it shared.
+        Policies and product information the AI uses to draft replies.
+        {isAdmin ? " Tag each to a store, or mark it shared." : " View only — ask an admin to make changes."}
       </Text>
 
       <Table>
@@ -93,15 +100,21 @@ export default function Kb() {
                 )}
               </Table.Td>
               <Table.Td>
-                <Select
-                  size="xs"
-                  w={190}
-                  data={scopeOptions}
-                  value={d.store_id === null ? "shared" : String(d.store_id)}
-                  allowDeselect={false}
-                  disabled={setScope.isPending && setScope.variables?.id === d.id}
-                  onChange={(value) => value && setScope.mutate({ id: d.id, value })}
-                />
+                {isAdmin ? (
+                  <Select
+                    size="xs"
+                    w={190}
+                    data={scopeOptions}
+                    value={d.store_id === null ? "shared" : String(d.store_id)}
+                    allowDeselect={false}
+                    disabled={setScope.isPending && setScope.variables?.id === d.id}
+                    onChange={(value) => value && setScope.mutate({ id: d.id, value })}
+                  />
+                ) : (
+                  <Badge variant="light" color={d.store_id === null ? "grape" : "blue"}>
+                    {scopeLabel(d.store_id)}
+                  </Badge>
+                )}
               </Table.Td>
               <Table.Td>
                 {d.char_count.toLocaleString()} chars
@@ -115,23 +128,27 @@ export default function Kb() {
                 <Badge color={d.is_active ? "green" : "gray"}>{d.is_active ? "Active" : "Off"}</Badge>
               </Table.Td>
               <Table.Td ta="right">
-                {d.source_url && (
-                  <Button
-                    size="compact-xs"
-                    variant="subtle"
-                    leftSection={<IconRefresh size={13} />}
-                    loading={reimport.isPending && reimport.variables === d.id}
-                    onClick={() => reimport.mutate(d.id)}
-                  >
-                    Refresh
-                  </Button>
+                {isAdmin && (
+                  <>
+                    {d.source_url && (
+                      <Button
+                        size="compact-xs"
+                        variant="subtle"
+                        leftSection={<IconRefresh size={13} />}
+                        loading={reimport.isPending && reimport.variables === d.id}
+                        onClick={() => reimport.mutate(d.id)}
+                      >
+                        Refresh
+                      </Button>
+                    )}
+                    <Button size="compact-xs" variant="subtle" onClick={() => toggle.mutate(d)}>
+                      {d.is_active ? "Turn off" : "Turn on"}
+                    </Button>
+                    <Button size="compact-xs" variant="subtle" color="red" onClick={() => remove.mutate(d.id)}>
+                      Delete
+                    </Button>
+                  </>
                 )}
-                <Button size="compact-xs" variant="subtle" onClick={() => toggle.mutate(d)}>
-                  {d.is_active ? "Turn off" : "Turn on"}
-                </Button>
-                <Button size="compact-xs" variant="subtle" color="red" onClick={() => remove.mutate(d.id)}>
-                  Delete
-                </Button>
               </Table.Td>
             </Table.Tr>
           ))}

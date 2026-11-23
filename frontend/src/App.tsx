@@ -64,6 +64,7 @@ const SECTIONS: NavSection[] = [
       { to: "/", label: "Tickets", icon: IconInbox, roles: ALL },
       { to: "/board", label: "Board", icon: IconLayoutKanban, roles: STAFF },
       { to: "/reports", label: "Reports", icon: IconChartBar, roles: STAFF },
+      { to: "/admin/kb", label: "Knowledge base", icon: IconBook2, roles: ALL },
     ],
   },
   {
@@ -71,7 +72,6 @@ const SECTIONS: NavSection[] = [
     items: [
       { to: "/admin/emails", label: "Email accounts", icon: IconMail, roles: ADMIN },
       { to: "/admin/stores", label: "Stores", icon: IconBuildingStore, roles: ADMIN },
-      { to: "/admin/kb", label: "Knowledge base", icon: IconBook2, roles: ADMIN },
       { to: "/admin/canned", label: "Canned responses", icon: IconMessages, roles: ADMIN },
       { to: "/admin/ai", label: "AI assistant", icon: IconSparkles, roles: ADMIN },
       { to: "/admin/users", label: "People", icon: IconUsers, roles: ADMIN },
@@ -257,6 +257,7 @@ export default function App() {
       <Route element={user ? <Shell user={user} /> : <Navigate to="/login" replace />}>
         <Route index element={<Inbox />} />
         <Route path="tickets/:id" element={<TicketView />} />
+        <Route path="admin/kb" element={<Kb />} /> {/* any signed-in user can view; edits gated inside */}
         {(user?.role === "manager" || user?.role === "admin") && (
           <>
             <Route path="board" element={<Board />} />
@@ -267,7 +268,6 @@ export default function App() {
           <>
             <Route path="admin/emails" element={<Emails />} />
             <Route path="admin/stores" element={<Stores />} />
-            <Route path="admin/kb" element={<Kb />} />
             <Route path="admin/canned" element={<Canned />} />
             <Route path="admin/ai" element={<Ai />} />
             <Route path="admin/users" element={<Users />} />

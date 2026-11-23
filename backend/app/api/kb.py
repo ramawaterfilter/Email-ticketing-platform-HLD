@@ -19,9 +19,11 @@ from ..models import AppUser, KbChunk, KbDocument, Store
 from ..schemas import KbAskIn, KbAskOut, KbDocumentFromUrl, KbDocumentIn, KbDocumentOut, KbDocumentPatch
 from ..webfetch import fetch_url_text
 
-router = APIRouter(tags=["kb"], dependencies=[Depends(require_role("admin"))])
+# Reads are open to any signed-in user; writes are guarded per-route with `admin`.
+router = APIRouter(tags=["kb"], dependencies=[Depends(current_user)])
+admin = require_role("admin")
 
-# Any signed-in agent can ask the policy assistant (read-only), so this lives outside the admin router.
+# The policy assistant is read-only, so it lives outside the admin guards too.
 ask_router = APIRouter(tags=["kb"])
 
 
@@ -131,7 +133,7 @@ def import_from_url(body: KbDocumentFromUrl, db: Session = Depends(get_db), user
     )
 
 
-@router.post("/kb/reindex")
+@router.post("/kb/reindex", dependencies=[Depends(admin)])
 def reindex(db: Session = Depends(get_db)):
     """Re-chunk every document (the worker then embeds the new chunks). Use after
     turning embeddings on, or to rebuild the index."""
@@ -139,7 +141,7 @@ def reindex(db: Session = Depends(get_db)):
     return {"documents": db.scalar(select(func.count()).select_from(KbDocument)), "chunks": chunks}
 
 
-@router.post("/kb/{doc_id}/refresh", response_model=KbDocumentOut)
+@router.post("/kb/{doc_id}/refresh", response_model=KbDocumentOut, dependencies=[Depends(admin)])
 def refresh_from_url(doc_id: int, db: Session = Depends(get_db)):
     doc = db.get(KbDocument, doc_id)
     if doc is None:
@@ -153,7 +155,7 @@ def refresh_from_url(doc_id: int, db: Session = Depends(get_db)):
     return _out(doc, *_count_for(db, doc.id))
 
 
-@router.patch("/kb/{doc_id}", response_model=KbDocumentOut)
+@router.patch("/kb/{doc_id}", response_model=KbDocumentOut, dependencies=[Depends(admin)])
 def update_doc(doc_id: int, body: KbDocumentPatch, db: Session = Depends(get_db)):
     doc = db.get(KbDocument, doc_id)
     if doc is None:
@@ -172,7 +174,7 @@ def update_doc(doc_id: int, body: KbDocumentPatch, db: Session = Depends(get_db)
     return _out(doc, *_count_for(db, doc.id))
 
 
-@router.delete("/kb/{doc_id}", status_code=204)
+@router.delete("/kb/{doc_id}", status_code=204, dependencies=[Depends(admin)])
 def delete_doc(doc_id: int, db: Session = Depends(get_db)):
     doc = db.get(KbDocument, doc_id)
     if doc is not None:
