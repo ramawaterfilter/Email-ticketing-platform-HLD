@@ -63,6 +63,37 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  # ---- DB monitoring tools ----
+  # Start with:  docker compose --profile tools up -d
+  # pgweb: browse tables + run SQL at http://localhost:8081
+  pgweb:
+    profiles: ["tools"]
+    image: sosedoff/pgweb:latest
+    environment:
+      PGWEB_DATABASE_URL: postgres://desk:${POSTGRES_PASSWORD:-desk}@db:5432/desk?sslmode=disable
+    ports:
+      - "127.0.0.1:8081:8081" # this machine only
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # metabase: charts + dashboards (ticket volume, SLA, AI usage) at http://localhost:3456
+  metabase:
+    profiles: ["tools"]
+    image: metabase/metabase:latest
+    ports:
+      - "127.0.0.1:3456:3000" # host 3456 (3000/3001 taken); this machine only
+    volumes:
+      - metabasedata:/metabase-data # keeps dashboards across restarts (H2 app db)
+    environment:
+      MB_DB_FILE: /metabase-data/metabase.db
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
 volumes:
   dbdata:
   caddydata:
+  metabasedata:
