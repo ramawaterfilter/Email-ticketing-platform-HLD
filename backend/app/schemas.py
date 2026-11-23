@@ -259,6 +259,9 @@ class BusinessHours(In):
 class AlertSettings(In):
     manager_emails: list[str] = Field(default_factory=list, max_length=50)
     google_chat_webhook: str | None = Field(None, max_length=1000)
+    # Safe mode: when true, the app never emails customers (replies are refused);
+    # internal alerts to managers/assignees still go out.
+    block_customer_email: bool = False
 
 
 class Count(Out):

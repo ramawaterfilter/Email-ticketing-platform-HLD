@@ -204,7 +204,7 @@ def put_business_hours(body: BusinessHours, db: Session = Depends(get_db), actor
 
 @router.get("/settings/alerts", response_model=AlertSettings, dependencies=[Depends(admin)])
 def get_alerts(db: Session = Depends(get_db)):
-    return _get_setting(db, "alerts", {"manager_emails": [], "google_chat_webhook": None})
+    return _get_setting(db, "alerts", {"manager_emails": [], "google_chat_webhook": None, "block_customer_email": False})
 
 
 @router.put("/settings/alerts", response_model=AlertSettings)

@@ -11,7 +11,16 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from ..errors import ApiError
-from ..models import Customer, Mailbox, Message, Store, SupportAddress, Ticket, TicketEvent
+from ..models import Customer, Mailbox, Message, Setting, Store, SupportAddress, Ticket, TicketEvent
+
+
+def _customer_email_blocked(db: Session) -> bool:
+    """Safe mode: block replies to customers while still allowing internal alerts."""
+    row = db.get(Setting, "alerts")
+    return bool((row.value or {}).get("block_customer_email")) if row else False
+
+
+_BLOCKED = "Customer email sending is turned off on this instance (safe mode). Enable it in Alert settings to send replies."
 
 
 def _now() -> datetime:
@@ -88,6 +97,9 @@ def send_reply(
     db: Session, ticket: Ticket, user_id: int, *, body_text: str, cc: list[str], client_request_id: str,
     last_seen_message_id: int | None, resolve: bool, client,
 ) -> Message:
+    if _customer_email_blocked(db):
+        raise ApiError(403, "sending_disabled", _BLOCKED)
+
     # Safe retry: the same request id never produces a second email.
     existing = db.scalar(select(Message).where(Message.client_request_id == client_request_id))
     if existing:
@@ -138,6 +150,8 @@ def send_reply(
 
 
 def retry_reply(db: Session, ticket: Ticket, message: Message, client) -> Message:
+    if _customer_email_blocked(db):
+        raise ApiError(403, "sending_disabled", _BLOCKED)
     if message.send_status != "failed":
         raise ApiError(409, "not_retryable", "Only a failed reply can be retried")
     mailbox = db.get(Mailbox, ticket.mailbox_id)

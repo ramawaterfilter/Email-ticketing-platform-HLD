@@ -166,13 +166,21 @@ function Hours() {
 
 function AlertsCard() {
   const queryClient = useQueryClient();
-  const alerts = useQuery({ queryKey: ["alert-settings"], queryFn: () => api<{ manager_emails: string[]; google_chat_webhook: string | null }>("/settings/alerts") });
+  const alerts = useQuery({
+    queryKey: ["alert-settings"],
+    queryFn: () =>
+      api<{ manager_emails: string[]; google_chat_webhook: string | null; block_customer_email: boolean }>(
+        "/settings/alerts",
+      ),
+  });
   const [emails, setEmails] = useState("");
   const [webhook, setWebhook] = useState("");
+  const [blockEmail, setBlockEmail] = useState(false);
   useEffect(() => {
     if (alerts.data) {
       setEmails(alerts.data.manager_emails.join("\n"));
       setWebhook(alerts.data.google_chat_webhook ?? "");
+      setBlockEmail(alerts.data.block_customer_email);
     }
   }, [alerts.data]);
 
@@ -181,6 +189,7 @@ function AlertsCard() {
       api("/settings/alerts", "PUT", {
         manager_emails: emails.split("\n").map((s) => s.trim()).filter(Boolean),
         google_chat_webhook: webhook.trim() || null,
+        block_customer_email: blockEmail,
       }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["alert-settings"] }),
   });
@@ -201,6 +210,12 @@ function AlertsCard() {
           label="Google Chat webhook (optional)"
           value={webhook}
           onChange={(e) => setWebhook(e.currentTarget.value)}
+        />
+        <Switch
+          label="Safe mode — never email customers"
+          description="Blocks all replies to customers. Internal alerts to managers and assignees still go out. Useful for testing or a public demo."
+          checked={blockEmail}
+          onChange={(e) => setBlockEmail(e.currentTarget.checked)}
         />
         <Group justify="flex-end">
           <Button loading={save.isPending} onClick={() => save.mutate()}>

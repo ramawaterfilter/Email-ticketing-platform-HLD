@@ -69,6 +69,28 @@ def test_reply_sends_one_email_and_moves_ticket_to_waiting(desk):
     assert store.signature_text in msg.body_text  # signature appended
 
 
+def test_safe_mode_blocks_customer_reply_but_not_alerts(desk):
+    from app.errors import ApiError
+    from app.models import Setting
+
+    db, store, mailbox, ticket, agent = desk
+    db.add(Setting(key="alerts", value={"manager_emails": [], "block_customer_email": True}))
+    db.commit()
+
+    fake = FakeGmail()
+    with pytest.raises(ApiError) as exc:
+        send_reply(db, ticket, agent.id, client=fake, **reply_args())
+    assert exc.value.status == 403 and exc.value.code == "sending_disabled"
+    assert fake.sent == []  # nothing was emailed to the customer
+    assert db.query(Message).filter_by(direction="outbound").count() == 0  # and no outbound row created
+
+    # Internal alerts must still be deliverable in safe mode.
+    from app import alerts
+
+    alerts.notify(db, ["manager@example.com"], "Test alert", "body", factory=lambda _m: fake)
+    assert len(fake.sent) == 1  # the alert went out even though customer replies are blocked
+
+
 def test_reply_is_idempotent_on_client_request_id(desk):
     db, store, mailbox, ticket, agent = desk
     fake = FakeGmail()
