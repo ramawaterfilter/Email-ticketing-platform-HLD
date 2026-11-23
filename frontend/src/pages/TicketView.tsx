@@ -32,7 +32,7 @@ import {
 } from "@tabler/icons-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
-import { Link, useParams } from "react-router";
+import { useNavigate, useParams } from "react-router";
 
 import {
   api,
@@ -63,6 +63,7 @@ export default function TicketView() {
 
 function Loaded({ t }: { t: TicketDetail }) {
   const me = useMe();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const draftKey = `draft:${t.id}`;
   const [reply, setReply] = useState(() => localStorage.getItem(draftKey) ?? "");
@@ -78,10 +79,16 @@ function Loaded({ t }: { t: TicketDetail }) {
 
   return (
     <Stack>
-      <Anchor component={Link} to="/" size="sm" c="dimmed" w="fit-content">
+      <Anchor
+        onClick={() => (window.history.length > 1 ? navigate(-1) : navigate("/"))}
+        size="sm"
+        c="dimmed"
+        w="fit-content"
+        style={{ cursor: "pointer" }}
+      >
         <Group gap={4} wrap="nowrap">
           <IconArrowBackUp size={16} />
-          Back to tickets
+          Back
         </Group>
       </Anchor>
       <Group justify="space-between" align="flex-start" wrap="nowrap">
