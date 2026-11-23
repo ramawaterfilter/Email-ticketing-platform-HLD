@@ -28,7 +28,7 @@ class RealShopify:
         self._token = token
 
     def orders_for_email(self, email: str) -> list[dict]:
-        import httpx
+        import httpx2 as httpx
 
         url = f"https://{self._domain}/admin/api/{API_VERSION}/orders.json"
         params = {"email": email, "status": "any", "limit": MAX_ORDERS, "order": "created_at desc"}
