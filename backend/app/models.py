@@ -288,6 +288,25 @@ class Setting(Base):
     value: Mapped[dict] = mapped_column(JSONB, default=dict)
 
 
+class AuditLog(Base):
+    """Append-only record of critical, system-wide changes (config, users, stores, KB).
+
+    actor_user_id null = system. target_id is text so it can key settings (string PKs) too.
+    Never store secrets (API keys, tokens) in `data`.
+    """
+
+    __tablename__ = "audit_log"
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
+    actor_user_id: Mapped[int | None] = mapped_column(ForeignKey("app_user.id", ondelete="SET NULL"), index=True)
+    action: Mapped[str] = mapped_column(Text, index=True)  # e.g. "store.update", "user.create"
+    target_type: Mapped[str | None] = mapped_column(Text)  # e.g. "store", "user", "kb_document"
+    target_id: Mapped[str | None] = mapped_column(Text)
+    summary: Mapped[str] = mapped_column(Text, default="", server_default="")
+    data: Mapped[dict] = mapped_column(JSONB, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), index=True)
+
+
 class KbDocument(Base):
     """A knowledge-base document the LLM may draw on. store_id null = shared across all stores."""
 

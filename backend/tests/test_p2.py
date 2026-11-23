@@ -212,11 +212,11 @@ def test_kb_crud_and_store_scope(login, db):
     assert admin.get("/api/v1/kb").json() == []
 
 
-def test_executive_cannot_manage_kb(login, db):
+def test_executive_can_read_but_not_manage_kb(login, db):
     make_exec(db, "e1@example.com")
     ex = login("e1@example.com")
-    assert ex.get("/api/v1/kb").status_code == 403
-    assert ex.post("/api/v1/kb", json={"title": "x", "body_text": "y"}).status_code == 403
+    assert ex.get("/api/v1/kb").status_code == 200  # staff may view the knowledge base
+    assert ex.post("/api/v1/kb", json={"title": "x", "body_text": "y"}).status_code == 403  # but not change it
 
 
 def test_suggestion_endpoint_and_rating(login, db):

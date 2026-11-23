@@ -10,6 +10,7 @@ from fastapi import APIRouter, Depends, File, Form, UploadFile
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from ..audit import record as log_audit
 from ..auth import current_user, require_role
 from ..db import get_db
 from ..errors import ApiError
@@ -81,10 +82,12 @@ def list_docs(db: Session = Depends(get_db)):
     return [_out(d, *counts.get(d.id, (0, 0))) for d in docs]
 
 
-def _create(db: Session, doc: KbDocument) -> KbDocumentOut:
+def _create(db: Session, doc: KbDocument, actor: AppUser) -> KbDocumentOut:
     db.add(doc)
     db.flush()
     n = reindex_document(db, doc)
+    log_audit(db, actor, "kb.create", target_type="kb_document", target_id=doc.id,
+              summary=f"Added KB document “{doc.title}”")
     db.commit()
     return _out(doc, chunks=n, embedded=0)
 
@@ -94,7 +97,7 @@ def create_doc(body: KbDocumentIn, db: Session = Depends(get_db), user: AppUser 
     _check_store(db, body.store_id)
     if not body.body_text.strip():
         raise ApiError(400, "empty", "Provide document text, or use the file upload")
-    return _create(db, KbDocument(store_id=body.store_id, title=body.title, body_text=body.body_text, created_by=user.id))
+    return _create(db, KbDocument(store_id=body.store_id, title=body.title, body_text=body.body_text, created_by=user.id), user)
 
 
 @router.post("/kb/upload", response_model=KbDocumentOut, status_code=201)
@@ -113,7 +116,7 @@ async def upload_doc(
     if not text.strip():
         raise ApiError(400, "no_text", "No readable text could be extracted from this file")
     return _create(
-        db, KbDocument(store_id=store_id, title=title, filename=file.filename, body_text=text, created_by=user.id)
+        db, KbDocument(store_id=store_id, title=title, filename=file.filename, body_text=text, created_by=user.id), user
     )
 
 
@@ -130,19 +133,22 @@ def import_from_url(body: KbDocumentFromUrl, db: Session = Depends(get_db), user
             body_text=text,
             created_by=user.id,
         ),
+        user,
     )
 
 
-@router.post("/kb/reindex", dependencies=[Depends(admin)])
-def reindex(db: Session = Depends(get_db)):
+@router.post("/kb/reindex")
+def reindex(db: Session = Depends(get_db), actor: AppUser = Depends(admin)):
     """Re-chunk every document (the worker then embeds the new chunks). Use after
     turning embeddings on, or to rebuild the index."""
     chunks = reindex_all(db)
+    log_audit(db, actor, "kb.reindex", target_type="kb_document", summary=f"Reindexed the knowledge base ({chunks} chunks)")
+    db.commit()
     return {"documents": db.scalar(select(func.count()).select_from(KbDocument)), "chunks": chunks}
 
 
-@router.post("/kb/{doc_id}/refresh", response_model=KbDocumentOut, dependencies=[Depends(admin)])
-def refresh_from_url(doc_id: int, db: Session = Depends(get_db)):
+@router.post("/kb/{doc_id}/refresh", response_model=KbDocumentOut)
+def refresh_from_url(doc_id: int, db: Session = Depends(get_db), actor: AppUser = Depends(admin)):
     doc = db.get(KbDocument, doc_id)
     if doc is None:
         raise ApiError(404, "not_found", "Document not found")
@@ -151,12 +157,14 @@ def refresh_from_url(doc_id: int, db: Session = Depends(get_db)):
     _, text = fetch_url_text(doc.source_url)
     doc.body_text = text
     reindex_document(db, doc, embed_now=True)  # embed before swapping, so old vectors serve until new land
+    log_audit(db, actor, "kb.refresh", target_type="kb_document", target_id=doc.id,
+              summary=f"Refreshed KB document “{doc.title}” from its URL")
     db.commit()
     return _out(doc, *_count_for(db, doc.id))
 
 
-@router.patch("/kb/{doc_id}", response_model=KbDocumentOut, dependencies=[Depends(admin)])
-def update_doc(doc_id: int, body: KbDocumentPatch, db: Session = Depends(get_db)):
+@router.patch("/kb/{doc_id}", response_model=KbDocumentOut)
+def update_doc(doc_id: int, body: KbDocumentPatch, db: Session = Depends(get_db), actor: AppUser = Depends(admin)):
     doc = db.get(KbDocument, doc_id)
     if doc is None:
         raise ApiError(404, "not_found", "Document not found")
@@ -170,13 +178,17 @@ def update_doc(doc_id: int, body: KbDocumentPatch, db: Session = Depends(get_db)
     for chunk in db.scalars(select(KbChunk).where(KbChunk.document_id == doc.id)):
         chunk.store_id = doc.store_id
         chunk.title = doc.title
+    log_audit(db, actor, "kb.update", target_type="kb_document", target_id=doc.id,
+              summary=f"Updated KB document “{doc.title}”", fields=sorted(data.keys()))
     db.commit()
     return _out(doc, *_count_for(db, doc.id))
 
 
-@router.delete("/kb/{doc_id}", status_code=204, dependencies=[Depends(admin)])
-def delete_doc(doc_id: int, db: Session = Depends(get_db)):
+@router.delete("/kb/{doc_id}", status_code=204)
+def delete_doc(doc_id: int, db: Session = Depends(get_db), actor: AppUser = Depends(admin)):
     doc = db.get(KbDocument, doc_id)
     if doc is not None:
+        log_audit(db, actor, "kb.delete", target_type="kb_document", target_id=doc.id,
+                  summary=f"Deleted KB document “{doc.title}”")
         db.delete(doc)
         db.commit()
