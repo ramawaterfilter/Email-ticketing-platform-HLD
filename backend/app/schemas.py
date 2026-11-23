@@ -312,6 +312,15 @@ class KbDocumentPatch(In):
     is_active: bool | None = None
 
 
+class KbAskIn(In):
+    question: str = Field(min_length=1, max_length=2000)
+
+
+class KbAskOut(Out):
+    answer: str
+    sources: list  # [{id, title}] of documents the answer drew on
+
+
 class KbDocumentFromUrl(In):
     url: str = Field(min_length=1, max_length=2000)
     title: str | None = Field(None, min_length=1, max_length=200)  # defaults to the page title

@@ -12,7 +12,7 @@ import logging
 import re
 from dataclasses import dataclass
 
-from sqlalchemy import delete, select
+from sqlalchemy import delete, select, true
 from sqlalchemy.orm import Session
 
 from .models import KbChunk, KbDocument, Setting
@@ -183,16 +183,20 @@ def embed_pending_chunks(db: Session, limit: int = 200) -> int:
 
 
 def retrieve(
-    db: Session, store_id: int, query: str, embedder: Embedder, k: int = RETRIEVE_K, budget: int = RETRIEVE_CHARS
+    db: Session, store_id: int | None, query: str, embedder: Embedder, k: int = RETRIEVE_K, budget: int = RETRIEVE_CHARS
 ) -> tuple[str, list[dict]]:
-    """Return (passages_text, documents_used) for the chunks nearest to the query."""
+    """Return (passages_text, documents_used) for the chunks nearest to the query.
+
+    store_id scopes to that store's docs plus shared ones; pass None to search
+    the whole knowledge base (every store + shared), e.g. for the policy helper.
+    """
     query_vec = embedder.embed([query], input_type="query")[0]
+    scope_filter = (
+        true() if store_id is None else ((KbChunk.store_id == store_id) | (KbChunk.store_id.is_(None)))
+    )
     rows = db.scalars(
         select(KbChunk)
-        .where(
-            (KbChunk.store_id == store_id) | (KbChunk.store_id.is_(None)),
-            KbChunk.embedding.is_not(None),
-        )
+        .where(scope_filter, KbChunk.embedding.is_not(None))
         .order_by(KbChunk.embedding.cosine_distance(query_vec))
         .limit(k)
     ).all()

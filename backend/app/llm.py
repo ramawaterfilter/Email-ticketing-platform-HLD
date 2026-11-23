@@ -191,6 +191,72 @@ def build_suggester(db: Session) -> Suggester | None:
     return AnthropicSuggester(cfg.api_key, cfg.model)
 
 
+KB_ASSISTANT_SYSTEM = (
+    "You are the policy assistant for Rama Water Filter's support team. Answer the question using "
+    "ONLY the policy and reference passages below. Be concise and specific. If the answer is not in "
+    "the passages, say you don't have that on file rather than guessing — never invent policies, "
+    "prices, or timeframes.\n\nPOLICY AND REFERENCE PASSAGES:\n"
+)
+
+
+def _all_docs_block(db: Session) -> tuple[str, list[dict]]:
+    """Whole knowledge base (all active docs), truncated — fallback when embeddings are off."""
+    docs = db.scalars(select(KbDocument).where(KbDocument.is_active.is_(True)).order_by(KbDocument.id)).all()
+    parts: list[str] = []
+    used: list[dict] = []
+    budget = MAX_KB_CHARS
+    for d in docs:
+        body = (d.body_text or "").strip()
+        if not body or budget <= 0:
+            continue
+        parts.append(f"--- {d.title} ---\n{body[:budget]}")
+        used.append({"id": d.id, "title": d.title})
+        budget -= len(body[:budget])
+    return "\n\n".join(parts), used
+
+
+def _chat_text(cfg: LlmConfig, system_text: str, user_text: str) -> str:
+    """A plain-text (non-structured) completion, for the policy chat widget."""
+    if cfg.provider == "openai":
+        from openai import OpenAI
+
+        client = OpenAI(api_key=cfg.api_key, base_url=cfg.base_url or None)
+        resp = client.chat.completions.create(
+            model=cfg.model,
+            messages=[{"role": "system", "content": system_text}, {"role": "user", "content": user_text}],
+            max_tokens=4000,  # reasoning models spend part of the budget thinking before answering
+        )
+        return (resp.choices[0].message.content or "").strip()
+    import anthropic
+
+    client = anthropic.Anthropic(api_key=cfg.api_key)
+    resp = client.messages.create(
+        model=cfg.model, max_tokens=1500, system=system_text,
+        messages=[{"role": "user", "content": user_text}],
+    )
+    return "".join(b.text for b in resp.content if getattr(b, "type", None) == "text").strip()
+
+
+def answer_kb_question(db: Session, question: str) -> tuple[str, list[dict]]:
+    """Answer a free-text policy question grounded in the whole knowledge base."""
+    from .kb_index import get_embedder, retrieve
+
+    cfg = get_config(db)
+    if cfg is None:
+        raise RuntimeError("not_configured")
+    embedder = get_embedder(db)
+    passages, sources = "", []
+    if embedder is not None:
+        try:
+            passages, sources = retrieve(db, None, question, embedder)
+        except Exception:  # noqa: BLE001 - embeddings down; fall back to the whole KB
+            log.exception("kb assistant retrieval failed; using whole KB")
+    if not sources:
+        passages, sources = _all_docs_block(db)
+    system_text = KB_ASSISTANT_SYSTEM + (passages or "(no policy documents on file)")
+    return _chat_text(cfg, system_text, question), sources
+
+
 def _kb_documents(db: Session, store_id: int) -> list[KbDocument]:
     # The store's own documents plus anything marked shared (store_id null).
     return list(

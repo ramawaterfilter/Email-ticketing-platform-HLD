@@ -109,6 +109,29 @@ def test_build_prompt_uses_semantic_when_embeddings_on(monkeypatch):
         assert any(d["title"] == "Order policy" for d in meta["documents"])
 
 
+def test_answer_kb_question_grounds_in_retrieved_docs(monkeypatch):
+    import app.llm as llm
+
+    _use_fake_embedder(monkeypatch)
+    # Don't call a real LLM: echo the passages so we can assert what was retrieved.
+    monkeypatch.setattr(llm, "_chat_text", lambda cfg, system_text, user_text: f"ANSWER using: {system_text[-200:]}")
+    monkeypatch.setattr(llm, "get_config", lambda _db: llm.LlmConfig("openai", "m", None, "k"))
+    with SessionLocal() as db:
+        store = make_store(db)
+        refunds = KbDocument(store_id=store.id, title="Refunds", body_text="Customers can get a refund or return items.")
+        shipping = KbDocument(store_id=None, title="Shipping", body_text="Orders ship in two days with tracking.")
+        db.add_all([refunds, shipping])
+        db.flush()
+        for d in (refunds, shipping):
+            reindex_document(db, d)
+        db.commit()
+        embed_pending_chunks(db)
+
+        answer, sources = llm.answer_kb_question(db, "how do I get a refund?")
+        assert answer.startswith("ANSWER using:")
+        assert any(s["title"] == "Refunds" for s in sources)  # cross-store search found the nearest doc
+
+
 def test_build_prompt_falls_back_to_whole_kb_when_off(monkeypatch):
     # No embedder configured -> get_embedder returns None -> whole-KB mode.
     monkeypatch.setattr(kb_index, "get_embedder", lambda _db: None)

@@ -41,6 +41,7 @@ import Canned from "./pages/Canned";
 import Emails from "./pages/Emails";
 import Inbox from "./pages/Inbox";
 import Kb from "./pages/Kb";
+import PolicyChat from "./PolicyChat";
 import Login from "./pages/Login";
 import Reports from "./pages/Reports";
 import Sla from "./pages/Sla";
@@ -223,6 +224,7 @@ function Shell({ user }: { user: User }) {
       <AppShell.Main>
         <Outlet />
       </AppShell.Main>
+      <PolicyChat />
     </AppShell>
   );
 }

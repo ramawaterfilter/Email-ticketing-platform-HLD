@@ -10,16 +10,32 @@ from fastapi import APIRouter, Depends, File, Form, UploadFile
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from ..auth import require_role
+from ..auth import current_user, require_role
 from ..db import get_db
 from ..errors import ApiError
 from ..kb_index import reindex_all, reindex_document
 from ..llm import extract_text
 from ..models import AppUser, KbChunk, KbDocument, Store
-from ..schemas import KbDocumentFromUrl, KbDocumentIn, KbDocumentOut, KbDocumentPatch
+from ..schemas import KbAskIn, KbAskOut, KbDocumentFromUrl, KbDocumentIn, KbDocumentOut, KbDocumentPatch
 from ..webfetch import fetch_url_text
 
 router = APIRouter(tags=["kb"], dependencies=[Depends(require_role("admin"))])
+
+# Any signed-in agent can ask the policy assistant (read-only), so this lives outside the admin router.
+ask_router = APIRouter(tags=["kb"])
+
+
+@ask_router.post("/kb/ask", response_model=KbAskOut)
+def ask(body: KbAskIn, db: Session = Depends(get_db), _: AppUser = Depends(current_user)):
+    from ..llm import answer_kb_question
+
+    try:
+        answer, sources = answer_kb_question(db, body.question)
+    except RuntimeError:
+        raise ApiError(400, "not_configured", "The AI assistant is not configured yet.")
+    except Exception as exc:  # noqa: BLE001 - surface provider errors to the user
+        raise ApiError(502, "assistant_failed", f"The assistant could not answer: {str(exc)[:200]}")
+    return KbAskOut(answer=answer, sources=sources)
 
 MAX_UPLOAD = 10 * 1024 * 1024  # 10 MB
 
