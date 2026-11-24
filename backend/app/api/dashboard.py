@@ -10,8 +10,16 @@ from sqlalchemy.orm import Session
 
 from ..auth import require_role
 from ..db import get_db
-from ..models import OPEN_STATUSES, AppUser, Mailbox, Store, Suggestion, SyncRun, Ticket
-from ..schemas import Count, Dashboard, MailboxHealth, Report, ReportStoreRow
+from ..models import OPEN_STATUSES, AppUser, Mailbox, Store, Suggestion, SyncRun, Ticket, TicketEvent
+from ..schemas import (
+    Count,
+    Dashboard,
+    ExecPerformance,
+    ExecPerformanceRow,
+    MailboxHealth,
+    Report,
+    ReportStoreRow,
+)
 
 router = APIRouter(tags=["dashboard"], dependencies=[Depends(require_role("manager", "admin"))])
 
@@ -135,3 +143,57 @@ def reports(days: int = 30, store_id: int | None = None, db: Session = Depends(g
         ai_not_helpful=ai_not_helpful,
         by_store=[ReportStoreRow(id=sid, name=name, created=c, resolved=r) for sid, name, c, r in by_store_rows],
     )
+
+
+@router.get("/reports/executives", response_model=ExecPerformance)
+def exec_performance(days: int = 30, db: Session = Depends(get_db)):
+    """Per-executive volume + resolution over the last `days` days."""
+    days = min(max(days, 1), 365)
+    now = datetime.now(timezone.utc)
+    frm = now - timedelta(days=days)
+    customer = Ticket.queue == "customer"
+
+    def by_assignee(*conds) -> dict[int, int]:
+        return dict(
+            db.execute(
+                select(Ticket.assignee_id, func.count())
+                .where(customer, Ticket.assignee_id.is_not(None), *conds)
+                .group_by(Ticket.assignee_id)
+            ).all()
+        )
+
+    assigned = by_assignee(Ticket.created_at >= frm)
+    resolved = by_assignee(Ticket.resolved_at.is_not(None), Ticket.resolved_at >= frm)
+    open_now = by_assignee(Ticket.status.in_(OPEN_STATUSES))
+    reopened = dict(
+        db.execute(
+            select(Ticket.assignee_id, func.count())
+            .join(TicketEvent, TicketEvent.ticket_id == Ticket.id)
+            .where(
+                customer,
+                Ticket.assignee_id.is_not(None),
+                TicketEvent.type == "reopened",
+                TicketEvent.created_at >= frm,
+            )
+            .group_by(Ticket.assignee_id)
+        ).all()
+    )
+
+    execs = db.scalars(
+        select(AppUser)
+        .where(AppUser.role == "executive", AppUser.is_active.is_(True))
+        .order_by(AppUser.name, AppUser.email)
+    ).all()
+    rows = [
+        ExecPerformanceRow(
+            id=u.id,
+            name=u.name or u.email,
+            email=u.email,
+            assigned=assigned.get(u.id, 0),
+            resolved=resolved.get(u.id, 0),
+            open=open_now.get(u.id, 0),
+            reopened=reopened.get(u.id, 0),
+        )
+        for u in execs
+    ]
+    return ExecPerformance(from_date=frm, to_date=now, rows=rows)
