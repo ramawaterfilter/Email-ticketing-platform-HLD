@@ -4,6 +4,7 @@ import {
   Badge,
   Button,
   Card,
+  Divider,
   Group,
   PasswordInput,
   SegmentedControl,
@@ -165,10 +166,11 @@ export default function Ai() {
             onChange={(e) => setApplyPriority(e.currentTarget.checked)}
           />
 
+          <Divider my="xs" label="Embeddings — semantic search over the knowledge base" labelPosition="left" />
           <TextInput
-            label="Embedding model (optional)"
-            description="Turns on semantic search over the knowledge base, so a large policy library scales — only the most relevant passages go into each draft. Leave blank to inject whole documents. After setting it, run Reindex on the Knowledge base screen."
-            placeholder="e.g. text-embedding-3-small, or your provider's embeddings model"
+            label="Embedding model"
+            description="Turns on semantic search over the knowledge base, so a large policy library scales — only the most relevant passages go into each draft. For a local model: run it in Ollama and set the endpoint below to http://localhost:11434/v1. Leave blank to inject whole documents. After changing this, run Reindex on the Knowledge base screen."
+            placeholder="e.g. mxbai-embed-large (Ollama) or text-embedding-3-small (OpenAI)"
             value={embeddingModel}
             onChange={(e) => setEmbeddingModel(e.currentTarget.value)}
           />

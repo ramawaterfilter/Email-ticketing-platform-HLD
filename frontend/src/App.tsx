@@ -44,6 +44,7 @@ import Inbox from "./pages/Inbox";
 import Kb from "./pages/Kb";
 import AuditLog from "./pages/AuditLog";
 import PolicyChat from "./PolicyChat";
+import { Agentation } from "agentation";
 import Login from "./pages/Login";
 import Reports from "./pages/Reports";
 import Sla from "./pages/Sla";
@@ -255,7 +256,9 @@ export default function App() {
   const user = me.data;
 
   return (
-    <Routes>
+    <>
+      {import.meta.env.DEV && <Agentation />}
+      <Routes>
       <Route path="/login" element={user ? <Navigate to="/" replace /> : <Login />} />
       <Route element={user ? <Shell user={user} /> : <Navigate to="/login" replace />}>
         <Route index element={<Inbox />} />
@@ -281,5 +284,6 @@ export default function App() {
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>
+    </>
   );
 }
