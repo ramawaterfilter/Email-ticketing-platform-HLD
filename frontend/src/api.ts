@@ -66,8 +66,12 @@ export const useTicket = (id: number) =>
     queryFn: () => api<TicketDetail>(`/tickets/${id}`),
     refetchInterval: 15000,
   });
-export const useDashboard = () =>
-  useQuery({ queryKey: ["dashboard"], queryFn: () => api<Dashboard>("/dashboard"), refetchInterval: 30000 });
+export const useDashboard = (storeId: number | null = null) =>
+  useQuery({
+    queryKey: ["dashboard", storeId],
+    queryFn: () => api<Dashboard>(`/dashboard${storeId ? `?store_id=${storeId}` : ""}`),
+    refetchInterval: 30000,
+  });
 export const useCanned = () =>
   useQuery({ queryKey: ["canned"], queryFn: () => api<CannedResponse[]>("/canned") });
 export const useReport = (days: number, storeId: number | null) =>

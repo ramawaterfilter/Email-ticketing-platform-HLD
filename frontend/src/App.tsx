@@ -10,6 +10,7 @@ import {
   Loader,
   Menu,
   NavLink,
+  Select,
   Text,
   ThemeIcon,
   useComputedColorScheme,
@@ -36,7 +37,8 @@ import {
 } from "@tabler/icons-react";
 import { Link, Navigate, Outlet, Route, Routes, useLocation } from "react-router";
 
-import { api, ApiError, useMe, type User } from "./api";
+import { api, ApiError, useMe, useStores, type User } from "./api";
+import { ActiveStoreProvider, useActiveStore } from "./activeStore";
 import Board from "./pages/Board";
 import Ai from "./pages/Ai";
 import Canned from "./pages/Canned";
@@ -44,6 +46,7 @@ import Emails from "./pages/Emails";
 import Inbox from "./pages/Inbox";
 import Kb from "./pages/Kb";
 import Team from "./pages/Team";
+import { Agentation } from "agentation";
 import AuditLog from "./pages/AuditLog";
 import PolicyChat from "./PolicyChat";
 import Login from "./pages/Login";
@@ -165,6 +168,32 @@ function UserMenu({ user }: { user: User }) {
   );
 }
 
+function StoreSwitcher({ user }: { user: User }) {
+  const stores = useStores();
+  const { storeId, setStoreId } = useActiveStore();
+  // Executives restricted to specific stores only switch between those; everyone else gets all stores.
+  const accessible =
+    user.role === "executive" && user.store_ids.length
+      ? (stores.data ?? []).filter((s) => user.store_ids.includes(s.id))
+      : stores.data ?? [];
+  if (accessible.length <= 1) return null; // nothing to switch between
+  return (
+    <Select
+      size="sm"
+      w={200}
+      aria-label="Active store"
+      leftSection={<IconBuildingStore size={16} />}
+      value={storeId ? String(storeId) : "all"}
+      onChange={(v) => setStoreId(v && v !== "all" ? Number(v) : null)}
+      allowDeselect={false}
+      data={[
+        { value: "all", label: "All stores" },
+        ...accessible.map((s) => ({ value: String(s.id), label: s.name })),
+      ]}
+    />
+  );
+}
+
 function Shell({ user }: { user: User }) {
   const { pathname } = useLocation();
   const active = (to: string) => (to === "/" ? pathname === "/" : pathname.startsWith(to));
@@ -183,6 +212,7 @@ function Shell({ user }: { user: User }) {
         <Group h="100%" px="lg" justify="space-between">
           <Brand />
           <Group gap="sm">
+            <StoreSwitcher user={user} />
             <ColorSchemeToggle />
             <UserMenu user={user} />
           </Group>
@@ -258,7 +288,9 @@ export default function App() {
   const user = me.data;
 
   return (
-    <Routes>
+    <ActiveStoreProvider>
+      {import.meta.env.DEV && <Agentation />}
+      <Routes>
       <Route path="/login" element={user ? <Navigate to="/" replace /> : <Login />} />
       <Route element={user ? <Shell user={user} /> : <Navigate to="/login" replace />}>
         <Route index element={<Inbox />} />
@@ -285,5 +317,6 @@ export default function App() {
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>
+    </ActiveStoreProvider>
   );
 }

@@ -27,16 +27,17 @@ DUE_SOON_MIN = 60  # a reply falling due within the next hour
 
 
 @router.get("/dashboard", response_model=Dashboard)
-def dashboard(db: Session = Depends(get_db)):
+def dashboard(store_id: int | None = None, db: Session = Depends(get_db)):
     now = datetime.now(timezone.utc)
     open_customer = (Ticket.queue == "customer") & Ticket.status.in_(OPEN_STATUSES)
+    store = [Ticket.store_id == store_id] if store_id else []  # scope to the selected store, or all
 
     unassigned = db.scalar(
-        select(func.count()).where(open_customer, Ticket.assignee_id.is_(None))
+        select(func.count()).where(open_customer, Ticket.assignee_id.is_(None), *store)
     )
     breached = db.scalar(
         select(func.count()).where(
-            open_customer, or_(Ticket.reply_breached_at.is_not(None), Ticket.resolution_breached_at.is_not(None))
+            open_customer, or_(Ticket.reply_breached_at.is_not(None), Ticket.resolution_breached_at.is_not(None)), *store
         )
     )
     due_soon = db.scalar(
@@ -46,13 +47,14 @@ def dashboard(db: Session = Depends(get_db)):
             Ticket.reply_due_at.is_not(None),
             Ticket.reply_due_at > now,
             Ticket.reply_due_at <= now + timedelta(minutes=DUE_SOON_MIN),
+            *store,
         )
     )
 
     by_exec = db.execute(
         select(AppUser.id, AppUser.name, AppUser.email, func.count(Ticket.id))
         .join(Ticket, Ticket.assignee_id == AppUser.id)
-        .where(open_customer)
+        .where(open_customer, *store)
         .group_by(AppUser.id, AppUser.name, AppUser.email)
         .order_by(func.count(Ticket.id).desc())
     ).all()

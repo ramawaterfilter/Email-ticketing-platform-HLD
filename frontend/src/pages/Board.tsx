@@ -2,6 +2,7 @@ import { Badge, Card, Group, Loader, SimpleGrid, Stack, Table, Text, Title } fro
 import { useNavigate } from "react-router";
 
 import { useDashboard } from "../api";
+import { useActiveStore } from "../activeStore";
 
 const STATUS_COLOR: Record<string, string> = { active: "green", pending: "yellow", error: "red", disabled: "gray" };
 
@@ -19,7 +20,8 @@ function Tile({ label, value, color, onClick }: { label: string; value: number; 
 }
 
 export default function Board() {
-  const board = useDashboard();
+  const { storeId } = useActiveStore();
+  const board = useDashboard(storeId);
   const navigate = useNavigate();
   if (board.isPending) return <Loader />;
   if (board.isError || !board.data) return <Text c="red">Could not load the board.</Text>;

@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router";
 
 import { type TicketListItem, useTickets } from "../api";
+import { useActiveStore } from "../activeStore";
 
 const TABS = [
   { value: "mine", label: "Mine", query: "view=mine&queue=customer" },
@@ -34,10 +35,12 @@ export default function Inbox() {
   const [tab, setTab] = useState("mine");
   const [search, setSearch] = useState("");
   const [sla, setSla] = useState("all");
+  const { storeId } = useActiveStore();
   const active = TABS.find((t) => t.value === tab)!;
   let query = active.query;
   if (search.trim()) query += `&q=${encodeURIComponent(search.trim())}`;
   if (sla !== "all") query += `&sla=${sla}`;
+  if (storeId) query += `&store_id=${storeId}`;
   const tickets = useTickets(query);
 
   return (

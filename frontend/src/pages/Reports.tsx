@@ -1,4 +1,4 @@
-import { Card, Group, Loader, SegmentedControl, Select, SimpleGrid, Stack, Table, Text, ThemeIcon, Title } from "@mantine/core";
+import { Card, Group, Loader, SegmentedControl, SimpleGrid, Stack, Table, Text, ThemeIcon, Title } from "@mantine/core";
 import {
   IconChecks,
   IconClock,
@@ -10,7 +10,8 @@ import {
 } from "@tabler/icons-react";
 import { useState } from "react";
 
-import { useReport, useStores } from "../api";
+import { useReport } from "../api";
+import { useActiveStore } from "../activeStore";
 
 function Stat({
   label,
@@ -49,10 +50,8 @@ function Stat({
 
 export default function Reports() {
   const [days, setDays] = useState("30");
-  const [storeId, setStoreId] = useState<string | null>(null);
-  const stores = useStores();
-  const resolvedStore = storeId && storeId !== "all" ? Number(storeId) : null;
-  const report = useReport(Number(days), resolvedStore);
+  const { storeId } = useActiveStore();  // scoped by the global store switcher in the header
+  const report = useReport(Number(days), storeId);
 
   const r = report.data;
   const accept =
@@ -70,16 +69,6 @@ export default function Reports() {
           </Text>
         </div>
         <Group>
-          <Select
-            w={200}
-            data={[
-              { value: "all", label: "All stores" },
-              ...(stores.data ?? []).map((s) => ({ value: String(s.id), label: s.name })),
-            ]}
-            value={storeId ?? "all"}
-            allowDeselect={false}
-            onChange={setStoreId}
-          />
           <SegmentedControl
             value={days}
             onChange={setDays}
