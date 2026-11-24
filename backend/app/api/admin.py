@@ -11,6 +11,7 @@ from ..errors import ApiError
 from ..models import AppUser, AuditLog, Setting, SlaPolicy, Store
 from ..schemas import (
     AlertSettings,
+    AssignmentSettings,
     AuditLogOut,
     BusinessHours,
     LlmSettingsIn,
@@ -205,6 +206,22 @@ def put_business_hours(body: BusinessHours, db: Session = Depends(get_db), actor
 @router.get("/settings/alerts", response_model=AlertSettings, dependencies=[Depends(admin)])
 def get_alerts(db: Session = Depends(get_db)):
     return _get_setting(db, "alerts", {"manager_emails": [], "google_chat_webhook": None})
+
+
+DEFAULT_ASSIGNMENT = {"enabled": True, "strategy": "least_loaded"}
+
+
+@router.get("/settings/assignment", response_model=AssignmentSettings, dependencies=[Depends(admin)])
+def get_assignment(db: Session = Depends(get_db)):
+    return _get_setting(db, "assignment", DEFAULT_ASSIGNMENT)
+
+
+@router.put("/settings/assignment", response_model=AssignmentSettings)
+def put_assignment(body: AssignmentSettings, db: Session = Depends(get_db), actor: AppUser = Depends(admin)):
+    log_audit(db, actor, "settings.assignment", target_type="setting", target_id="assignment",
+              summary=f"Auto-assignment {'on' if body.enabled else 'off'} ({body.strategy})", **body.model_dump())
+    _put_setting(db, "assignment", body.model_dump())
+    return body
 
 
 @router.put("/settings/alerts", response_model=AlertSettings)

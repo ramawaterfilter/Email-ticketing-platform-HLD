@@ -22,6 +22,7 @@ import {
   IconDroplet,
   IconGauge,
   IconHistory,
+  IconReportAnalytics,
   IconInbox,
   IconLayoutKanban,
   IconLogout,
@@ -42,6 +43,7 @@ import Canned from "./pages/Canned";
 import Emails from "./pages/Emails";
 import Inbox from "./pages/Inbox";
 import Kb from "./pages/Kb";
+import Team from "./pages/Team";
 import AuditLog from "./pages/AuditLog";
 import PolicyChat from "./PolicyChat";
 import Login from "./pages/Login";
@@ -77,6 +79,7 @@ const SECTIONS: NavSection[] = [
       { to: "/admin/canned", label: "Canned responses", icon: IconMessages, roles: ADMIN },
       { to: "/admin/ai", label: "AI assistant", icon: IconSparkles, roles: ADMIN },
       { to: "/admin/users", label: "People", icon: IconUsers, roles: ADMIN },
+      { to: "/admin/team", label: "Team", icon: IconReportAnalytics, roles: ADMIN },
       { to: "/admin/sla", label: "SLA and alerts", icon: IconGauge, roles: ADMIN },
       { to: "/admin/audit", label: "Activity log", icon: IconHistory, roles: ADMIN },
     ],
@@ -274,6 +277,7 @@ export default function App() {
             <Route path="admin/canned" element={<Canned />} />
             <Route path="admin/ai" element={<Ai />} />
             <Route path="admin/users" element={<Users />} />
+            <Route path="admin/team" element={<Team />} />
             <Route path="admin/sla" element={<Sla />} />
             <Route path="admin/audit" element={<AuditLog />} />
           </>

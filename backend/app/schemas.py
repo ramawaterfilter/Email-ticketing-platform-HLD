@@ -393,6 +393,30 @@ class Report(Out):
     by_store: list[ReportStoreRow]
 
 
+# ---- Auto-assignment settings + executive performance ----
+
+
+class AssignmentSettings(In):
+    enabled: bool = True  # turn auto-assignment on/off
+    strategy: Literal["least_loaded", "round_robin"] = "least_loaded"
+
+
+class ExecPerformanceRow(Out):
+    id: int
+    name: str
+    email: str
+    assigned: int   # tickets assigned to them, created in range
+    resolved: int   # tickets they resolved in range
+    open: int       # tickets currently open and assigned to them
+    reopened: int   # tickets of theirs reopened in range
+
+
+class ExecPerformance(Out):
+    from_date: datetime
+    to_date: datetime
+    rows: list[ExecPerformanceRow]
+
+
 class AuditLogOut(Out):
     id: int
     actor_user_id: int | None

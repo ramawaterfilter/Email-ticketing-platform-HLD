@@ -5,15 +5,23 @@ from __future__ import annotations
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from ..models import OPEN_STATUSES, AppUser, Ticket, user_store
+from ..models import OPEN_STATUSES, AppUser, Setting, Ticket, user_store
 
 
 def pick_assignee(db: Session, ticket: Ticket) -> AppUser | None:
-    """Fewest open tickets wins; ties break on who was assigned longest ago.
+    """Pick an executive per the admin auto-assignment settings.
 
-    Candidate rows are locked so two tickets arriving together are not both handed to
-    the same person. Returns None (ticket stays unassigned) when no one is eligible.
+    Settings (stored under "assignment"): `enabled` (off = ticket stays unassigned),
+    and `strategy`: "least_loaded" (fewest open tickets wins) or "round_robin" (whoever
+    was assigned longest ago, rotating). Both respect each person's open-ticket cap,
+    availability, and store membership. Candidate rows are locked so two tickets arriving
+    together are not handed to the same person.
     """
+    cfg = db.get(Setting, "assignment")
+    conf = cfg.value if cfg and cfg.value else {}
+    if not conf.get("enabled", True):
+        return None
+    strategy = conf.get("strategy", "least_loaded")
     # Executives restricted to stores: a row in user_store means "only these stores".
     restricted = select(user_store.c.user_id).where(user_store.c.store_id == ticket.store_id)
     unrestricted = select(user_store.c.user_id)
@@ -45,7 +53,10 @@ def pick_assignee(db: Session, ticket: Ticket) -> AppUser | None:
     eligible = [u for u in candidates if load(u) < u.max_open_tickets]
     if not eligible:
         return None
-    # Oldest last_assigned_at first; never-assigned (None) sorts oldest of all.
+    if strategy == "round_robin":
+        # Rotate strictly by who was assigned longest ago (still capacity-capped); load breaks ties.
+        return min(eligible, key=lambda u: (u.last_assigned_at or _EPOCH, load(u)))
+    # least_loaded: fewest open tickets first; who was assigned longest ago breaks ties.
     return min(eligible, key=lambda u: (load(u), u.last_assigned_at or _EPOCH))
 
 
