@@ -6,6 +6,7 @@ import {
   FileInput,
   Group,
   Modal,
+  Progress,
   SegmentedControl,
   Select,
   Stack,
@@ -23,7 +24,13 @@ import { api, type KbDocument, useMe, useStores } from "../api";
 
 export default function Kb() {
   const queryClient = useQueryClient();
-  const docs = useQuery({ queryKey: ["kb"], queryFn: () => api<KbDocument[]>("/kb") });
+  const docs = useQuery({
+    queryKey: ["kb"],
+    queryFn: () => api<KbDocument[]>("/kb"),
+    // Poll while any document is still embedding, so the progress bars move live.
+    refetchInterval: (q) =>
+      (q.state.data as KbDocument[] | undefined)?.some((d) => d.chunks > 0 && d.embedded < d.chunks) ? 2500 : false,
+  });
   const stores = useStores();
   const me = useMe();
   const isAdmin = me.data?.role === "admin"; // only admins may change the knowledge base
@@ -118,11 +125,19 @@ export default function Kb() {
               </Table.Td>
               <Table.Td>
                 {d.char_count.toLocaleString()} chars
-                {d.chunks > 0 && (
-                  <Text size="xs" c={d.embedded === d.chunks ? "teal" : "dimmed"}>
-                    {d.embedded === d.chunks ? "Indexed" : `${d.embedded}/${d.chunks} embedded`}
-                  </Text>
-                )}
+                {d.chunks > 0 &&
+                  (d.embedded === d.chunks ? (
+                    <Text size="xs" c="teal">
+                      Indexed · {d.chunks} chunks
+                    </Text>
+                  ) : (
+                    <Stack gap={2} mt={4} w={160}>
+                      <Progress value={Math.round((d.embedded / d.chunks) * 100)} size="sm" animated />
+                      <Text size="xs" c="dimmed">
+                        {Math.round((d.embedded / d.chunks) * 100)}% embedded ({d.embedded}/{d.chunks})
+                      </Text>
+                    </Stack>
+                  ))}
               </Table.Td>
               <Table.Td>
                 <Badge color={d.is_active ? "green" : "gray"}>{d.is_active ? "Active" : "Off"}</Badge>
