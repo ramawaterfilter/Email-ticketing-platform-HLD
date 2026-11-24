@@ -65,6 +65,7 @@ class UserPatch(In):
     name: str | None = Field(None, max_length=100)
     role: Role | None = None
     is_active: bool | None = None
+    is_available: bool | None = None  # admins can mark an executive available/unavailable for auto-assignment
     store_ids: list[int] | None = None
     max_open_tickets: int | None = Field(None, ge=1, le=500)
 
