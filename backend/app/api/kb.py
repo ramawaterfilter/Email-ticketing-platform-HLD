@@ -85,11 +85,13 @@ def list_docs(db: Session = Depends(get_db)):
 def _create(db: Session, doc: KbDocument, actor: AppUser) -> KbDocumentOut:
     db.add(doc)
     db.flush()
-    n = reindex_document(db, doc)
+    # Embed on upload so the document is searchable immediately, without waiting for the worker.
+    # If the embeddings provider is unavailable, this falls back to pending (the worker finishes it).
+    reindex_document(db, doc, embed_now=True)
     log_audit(db, actor, "kb.create", target_type="kb_document", target_id=doc.id,
               summary=f"Added KB document “{doc.title}”")
     db.commit()
-    return _out(doc, chunks=n, embedded=0)
+    return _out(doc, *_count_for(db, doc.id))
 
 
 @router.post("/kb", response_model=KbDocumentOut, status_code=201)
