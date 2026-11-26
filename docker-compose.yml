@@ -25,6 +25,8 @@ services:
     env_file: .env
     environment:
       DESK_DATABASE_URL: postgresql+psycopg://desk:${POSTGRES_PASSWORD:-desk}@db:5432/desk
+    extra_hosts:
+      - "host.docker.internal:host-gateway" # reach the host's native Ollama on :11434
     depends_on:
       db:
         condition: service_healthy
@@ -43,6 +45,8 @@ services:
     env_file: .env
     environment:
       DESK_DATABASE_URL: postgresql+psycopg://desk:${POSTGRES_PASSWORD:-desk}@db:5432/desk
+    extra_hosts:
+      - "host.docker.internal:host-gateway" # reach the host's native Ollama on :11434
     depends_on:
       api:
         condition: service_healthy # api applies migrations first
