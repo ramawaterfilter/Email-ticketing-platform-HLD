@@ -11,7 +11,6 @@ import {
   Menu,
   NavLink,
   Text,
-  ThemeIcon,
   useComputedColorScheme,
   useMantineColorScheme,
 } from "@mantine/core";
@@ -19,7 +18,6 @@ import {
   IconBook2,
   IconBuildingStore,
   IconChartBar,
-  IconDroplet,
   IconGauge,
   IconHistory,
   IconReportAnalytics,
@@ -94,20 +92,14 @@ function initials(user: User): string {
 }
 
 function Brand() {
+  const scheme = useComputedColorScheme("light");
   return (
-    <Group gap="sm">
-      <ThemeIcon size={34} radius="md" variant="gradient" gradient={{ from: "brand.5", to: "brand.7", deg: 135 }}>
-        <IconDroplet size={20} />
-      </ThemeIcon>
-      <Box>
-        <Text fw={700} lh={1.1} size="sm">
-          Rama
-        </Text>
-        <Text c="dimmed" size="xs" lh={1.1}>
-          Support Desk
-        </Text>
-      </Box>
-    </Group>
+    <img
+      src="/logo.png"
+      alt="Phoenix Gravity"
+      // ponytail: navy mark on transparent bg — flip to white in dark mode so it shows on the dark header
+      style={{ height: 40, display: "block", filter: scheme === "dark" ? "brightness(0) invert(1)" : undefined }}
+    />
   );
 }
 

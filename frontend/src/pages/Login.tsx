@@ -1,5 +1,5 @@
-import { Alert, Box, Button, Center, Divider, Group, Paper, Stack, Text, ThemeIcon, TextInput } from "@mantine/core";
-import { IconBrandGoogleFilled, IconDroplet } from "@tabler/icons-react";
+import { Alert, Button, Center, Divider, Paper, Stack, Text, TextInput, useComputedColorScheme } from "@mantine/core";
+import { IconBrandGoogleFilled } from "@tabler/icons-react";
 import { type FormEvent, useState } from "react";
 import { useSearchParams } from "react-router";
 
@@ -15,6 +15,7 @@ const MESSAGES: Record<string, string> = {
 
 export default function Login() {
   const [params] = useSearchParams();
+  const scheme = useComputedColorScheme("light");
   const error = params.get("error");
   const [email, setEmail] = useState("");
   const [devError, setDevError] = useState("");
@@ -36,19 +37,17 @@ export default function Login() {
     >
       <Paper withBorder shadow="md" p="xl" w={400} radius="lg">
         <Stack>
-          <Group gap="sm">
-            <ThemeIcon size={44} radius="md" variant="gradient" gradient={{ from: "brand.5", to: "brand.7", deg: 135 }}>
-              <IconDroplet size={26} />
-            </ThemeIcon>
-            <Box>
-              <Text fw={700} size="lg" lh={1.1}>
-                Rama Support Desk
-              </Text>
-              <Text c="dimmed" size="sm" lh={1.2}>
-                Sign in to your workspace
-              </Text>
-            </Box>
-          </Group>
+          <Stack gap="xs" align="center">
+            <img
+              src="/logo.png"
+              alt="Phoenix Gravity"
+              // ponytail: navy mark on transparent bg — flip to white in dark mode so it shows
+              style={{ height: 88, display: "block", filter: scheme === "dark" ? "brightness(0) invert(1)" : undefined }}
+            />
+            <Text c="dimmed" size="sm">
+              Sign in to your workspace
+            </Text>
+          </Stack>
 
           {error && <Alert color="red">{MESSAGES[error] ?? "Sign-in failed."}</Alert>}
 
