@@ -8,5 +8,7 @@ export default defineConfig({
     strictPort: true, // the Google redirect address is tied to this port
     // Same origin as the API in development, exactly as in production behind the reverse proxy.
     proxy: { "/api": "http://127.0.0.1:8000" },
+    // Allow access through a Cloudflare quick tunnel (public URL for cross-device testing).
+    allowedHosts: [".trycloudflare.com"],
   },
 });
