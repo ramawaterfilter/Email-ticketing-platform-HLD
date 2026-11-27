@@ -1,0 +1,11 @@
+[Unit]
+Description=Rama Support Desk pull-based deploy
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=palnice
+Environment=HOME=/home/palnice
+Environment=DEPLOY_DIR=/home/palnice/support-desk
+ExecStart=/home/palnice/support-desk/scripts/deploy.sh
