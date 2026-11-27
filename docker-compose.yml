@@ -57,6 +57,7 @@ services:
     build: ./frontend
     environment:
       DESK_SITE_ADDRESS: ${DESK_SITE_ADDRESS:-:80}
+      DESK_ACME_GLOBAL: ${DESK_ACME_GLOBAL:-} # e.g. "acme_dns duckdns <token>" for on-prem DNS-01 certs
     ports:
       # Defaults preserve the public-VM behaviour: 0.0.0.0:80 + 0.0.0.0:443, Caddy terminates HTTPS.
       # Behind a reverse proxy that terminates TLS (e.g. Tailscale Serve), bind to localhost and
