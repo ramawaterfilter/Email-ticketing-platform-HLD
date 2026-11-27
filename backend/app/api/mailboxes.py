@@ -21,14 +21,15 @@ router = APIRouter(tags=["mailboxes"], dependencies=[Depends(require_role("admin
 
 REDIRECT_PATH = "/api/v1/mailboxes/oauth/callback"
 
-# Local development runs over http://localhost; Google's oauthlib otherwise refuses the
-# non-https callback, and Google adds openid/email/profile to the gmail.modify request.
-# Both relaxations apply only when the app is served over http (never in production/https).
-if settings.public_url.startswith("http://"):
-    import os as _os
+import os as _os
 
+# Google always expands the gmail.modify request with openid/email/profile, so the granted
+# scope never matches what we asked for. Relax oauthlib's strict scope check in every mode
+# (http and https) — otherwise the mailbox OAuth callback fails with "Scope has changed".
+_os.environ.setdefault("OAUTHLIB_RELAX_TOKEN_SCOPE", "1")
+# Local development runs over http://localhost; allow oauthlib's non-https callback there only.
+if settings.public_url.startswith("http://"):
     _os.environ.setdefault("OAUTHLIB_INSECURE_TRANSPORT", "1")
-    _os.environ.setdefault("OAUTHLIB_RELAX_TOKEN_SCOPE", "1")
 
 
 def _last_run(db: Session, mailbox_id: int, kind: str) -> SyncRun | None:
