@@ -164,7 +164,12 @@ def oauth_callback(request: Request, db: Session = Depends(get_db)):
         raise ApiError(400, "bad_state", "Sign-in state did not match; please try again")
     flow = _flow(state=request.query_params.get("state"))
     flow.code_verifier = request.session.pop("mailbox_code_verifier", None)
-    flow.fetch_token(authorization_response=str(request.url))
+    # Behind a TLS-terminating proxy (Caddy) the callback reaches us over plain http, but
+    # oauthlib refuses a non-https authorization_response. Restore the real external scheme.
+    auth_response = str(request.url)
+    if settings.public_url.startswith("https://") and auth_response.startswith("http://"):
+        auth_response = "https://" + auth_response[len("http://") :]
+    flow.fetch_token(authorization_response=auth_response)
     client = _client_from_credentials(flow.credentials)
 
     profile = client.profile_get()
