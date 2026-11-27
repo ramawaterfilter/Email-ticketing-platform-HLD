@@ -1,3 +1,11 @@
+# Global options. DESK_ACME_GLOBAL is injected from the environment; in production behind a
+# firewall (no inbound) set it to use the DNS-01 challenge, e.g.
+#   DESK_ACME_GLOBAL=acme_dns duckdns <your-duckdns-token>
+# Left empty for local/public runs (normal HTTP/TLS-ALPN challenge or plain HTTP).
+{
+	{$DESK_ACME_GLOBAL:}
+}
+
 # DESK_SITE_ADDRESS is a domain in production (e.g. desk.example.com), which makes Caddy
 # obtain an HTTPS certificate automatically. Without it, plain HTTP on port 80 for local runs.
 {$DESK_SITE_ADDRESS::80} {
