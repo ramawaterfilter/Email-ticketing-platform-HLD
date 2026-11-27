@@ -62,6 +62,15 @@ def test_new_customer_ticket_gets_both_clocks(db):
     assert t.reply_due_at is not None and t.resolution_due_at is not None
 
 
+def test_sla_disabled_arms_no_clocks(db):
+    db.merge(Setting(key="sla_enabled", value={"enabled": False}))
+    db.commit()
+    store, mailbox = seed(db)
+    do_ingest(db, mailbox, build_message("m1", thread_id="t1"))
+    t = db.query(Ticket).one()
+    assert t.reply_due_at is None and t.resolution_due_at is None
+
+
 def test_reply_clears_reply_clock_and_pauses_resolution(db):
     store, mailbox = seed(db)
     do_ingest(db, mailbox, build_message("m1", thread_id="t1"))

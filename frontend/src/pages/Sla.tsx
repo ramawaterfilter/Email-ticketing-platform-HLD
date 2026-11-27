@@ -25,6 +25,12 @@ function Policies() {
     mutationFn: (p: SlaPolicy) => api("/sla-policies", "PUT", p),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["sla-policies"] }),
   });
+  const enabled = useQuery({ queryKey: ["sla-enabled"], queryFn: () => api<{ enabled: boolean }>("/settings/sla-enabled") });
+  const toggle = useMutation({
+    mutationFn: (v: boolean) => api("/settings/sla-enabled", "PUT", { enabled: v }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["sla-enabled"] }),
+  });
+  const on = enabled.data?.enabled ?? true;
 
   const byStore = new Map(policies.data?.map((p) => [p.store_id, p]));
   const rows: { store_id: number | null; name: string }[] = [
@@ -34,9 +40,20 @@ function Policies() {
 
   return (
     <Card withBorder>
-      <Text fw={600} mb="xs">
-        Response targets (business minutes)
-      </Text>
+      <Group justify="space-between" mb="xs">
+        <Text fw={600}>Response targets (business minutes)</Text>
+        <Switch
+          checked={on}
+          onChange={(e) => toggle.mutate(e.currentTarget.checked)}
+          disabled={enabled.isLoading || toggle.isPending}
+          label={on ? "SLA on" : "SLA off"}
+        />
+      </Group>
+      {!on && (
+        <Alert color="gray" mb="xs">
+          SLA tracking is off — tickets get no reply/resolution timers and no breach alerts fire. Turn it back on to resume.
+        </Alert>
+      )}
       <Table>
         <Table.Thead>
           <Table.Tr>
@@ -59,6 +76,7 @@ function Policies() {
                 resolution_min: 2880,
               }}
               saving={save.isPending}
+              disabled={!on}
               onSave={save.mutate}
             />
           ))}
@@ -68,10 +86,11 @@ function Policies() {
   );
 }
 
-function PolicyRow({ name, policy, saving, onSave }: {
+function PolicyRow({ name, policy, saving, disabled, onSave }: {
   name: string;
   policy: SlaPolicy;
   saving: boolean;
+  disabled: boolean;
   onSave: (p: SlaPolicy) => void;
 }) {
   const [p, setP] = useState(policy);
@@ -81,11 +100,11 @@ function PolicyRow({ name, policy, saving, onSave }: {
       <Table.Td>{name}</Table.Td>
       {(["first_response_min", "next_response_min", "resolution_min"] as const).map((f) => (
         <Table.Td key={f}>
-          <NumberInput w={110} min={5} value={p[f]} onChange={(v) => setP({ ...p, [f]: Number(v) || 5 })} />
+          <NumberInput w={110} min={5} disabled={disabled} value={p[f]} onChange={(v) => setP({ ...p, [f]: Number(v) || 5 })} />
         </Table.Td>
       ))}
       <Table.Td>
-        <Button size="xs" loading={saving} onClick={() => onSave(p)}>
+        <Button size="xs" loading={saving} disabled={disabled} onClick={() => onSave(p)}>
           Save
         </Button>
       </Table.Td>

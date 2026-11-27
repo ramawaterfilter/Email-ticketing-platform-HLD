@@ -66,6 +66,12 @@ def business_hours(db: Session) -> BusinessHours:
     return _load_hours(row.value if row and row.value else DEFAULT_BUSINESS_HOURS)
 
 
+def sla_enabled(db: Session) -> bool:
+    """Master switch (admin SLA screen). When off, no reply/resolution clocks run."""
+    row = db.get(Setting, "sla_enabled")
+    return bool(row.value.get("enabled", True)) if row and row.value else True
+
+
 def policy_for(db: Session, store_id: int) -> SlaPolicy:
     store_policy = db.scalar(select(SlaPolicy).where(SlaPolicy.store_id == store_id))
     if store_policy:
@@ -128,6 +134,12 @@ def _now() -> datetime:
 def after_customer_message(db: Session, ticket: Ticket, *, new_ticket: bool, prior_status: str | None) -> None:
     """A customer message needs an answer: (re)start the reply clock, resume resolution."""
     if ticket.queue != "customer":
+        return
+    if not sla_enabled(db):
+        # SLA off: never arm a clock, and clear any left over from when it was on.
+        ticket.awaiting_reply_since = None
+        ticket.reply_due_at = ticket.reply_warned_at = ticket.reply_breached_at = None
+        ticket.resolution_due_at = ticket.resolution_remaining_min = None
         return
     now = _now()
     bh = business_hours(db)
