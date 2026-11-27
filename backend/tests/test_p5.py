@@ -114,7 +114,13 @@ def test_answer_kb_question_grounds_in_retrieved_docs(monkeypatch):
 
     _use_fake_embedder(monkeypatch)
     # Don't call a real LLM: echo the passages so we can assert what was retrieved.
-    monkeypatch.setattr(llm, "_chat_text", lambda cfg, system_text, user_text: f"ANSWER using: {system_text[-200:]}")
+    captured = {}
+
+    def fake_chat(cfg, system_text, user_text):
+        captured.update(system=system_text, question=user_text)
+        return f"ANSWER using: {system_text[-200:]}"
+
+    monkeypatch.setattr(llm, "_chat_text", fake_chat)
     monkeypatch.setattr(llm, "get_config", lambda _db: llm.LlmConfig("openai", "m", None, "k"))
     with SessionLocal() as db:
         store = make_store(db)
@@ -130,6 +136,16 @@ def test_answer_kb_question_grounds_in_retrieved_docs(monkeypatch):
         answer, sources = llm.answer_kb_question(db, "how do I get a refund?")
         assert answer.startswith("ANSWER using:")
         assert any(s["title"] == "Refunds" for s in sources)  # cross-store search found the nearest doc
+        assert captured["question"] == "how do I get a refund?"
+        instructions, passages = captured["system"].split("POLICY AND REFERENCE PASSAGES:\n", 1)
+        assert "plain-text bullet points starting with •, normally 1–5 bullets" in instructions
+        assert "Needs clarification:" in instructions
+        assert "question is ambiguous" in instructions
+        assert "required information is missing" in instructions
+        assert "passages conflict" in instructions
+        assert "Ask one focused clarification question" in instructions
+        assert "Never invent policies, prices, dates, timeframes, or promises" in instructions
+        assert "Customers can get a refund or return items." in passages
 
 
 def test_build_prompt_falls_back_to_whole_kb_when_off(monkeypatch):
