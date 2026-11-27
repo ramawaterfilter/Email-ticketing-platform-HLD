@@ -58,8 +58,12 @@ services:
     environment:
       DESK_SITE_ADDRESS: ${DESK_SITE_ADDRESS:-:80}
     ports:
-      - "${DESK_HTTP_PORT:-80}:80"
-      - "443:443"
+      # Defaults preserve the public-VM behaviour: 0.0.0.0:80 + 0.0.0.0:443, Caddy terminates HTTPS.
+      # Behind a reverse proxy that terminates TLS (e.g. Tailscale Serve), bind to localhost and
+      # free host :443 by setting in .env:
+      #   DESK_HTTP_BIND=127.0.0.1  DESK_HTTPS_BIND=127.0.0.1  DESK_HTTPS_PORT=8443
+      - "${DESK_HTTP_BIND:-0.0.0.0}:${DESK_HTTP_PORT:-80}:80"
+      - "${DESK_HTTPS_BIND:-0.0.0.0}:${DESK_HTTPS_PORT:-443}:443"
     volumes:
       - caddydata:/data # HTTPS certificates
     depends_on:
