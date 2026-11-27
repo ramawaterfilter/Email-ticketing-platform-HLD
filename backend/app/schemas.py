@@ -261,6 +261,10 @@ class AlertSettings(In):
     google_chat_webhook: str | None = Field(None, max_length=1000)
 
 
+class SlaEnabled(In):
+    enabled: bool = True  # master switch for SLA reply/resolution clocks and breach alerts
+
+
 class Count(Out):
     id: int | None
     name: str

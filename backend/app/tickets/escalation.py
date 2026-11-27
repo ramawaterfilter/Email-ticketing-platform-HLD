@@ -40,8 +40,9 @@ def escalate(db: Session, now: datetime | None = None, notify=alerts.notify) -> 
     managers = alerts.manager_recipients(db)
     bh = sla.business_hours(db)
 
-    _reply_clocks(db, now, bh, managers, notify)
-    _resolution_clocks(db, now, managers, notify)
+    if sla.sla_enabled(db):  # master switch off → no reply/resolution breach or warning alerts
+        _reply_clocks(db, now, bh, managers, notify)
+        _resolution_clocks(db, now, managers, notify)
     _unassigned(db, now, managers, notify)
     _auto_close(db, now)
     db.commit()

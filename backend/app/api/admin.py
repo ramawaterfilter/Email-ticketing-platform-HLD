@@ -16,6 +16,7 @@ from ..schemas import (
     BusinessHours,
     LlmSettingsIn,
     LlmSettingsOut,
+    SlaEnabled,
     SlaPolicyIn,
     SlaPolicyOut,
     StoreIn,
@@ -200,6 +201,19 @@ def put_business_hours(body: BusinessHours, db: Session = Depends(get_db), actor
     log_audit(db, actor, "settings.business_hours", target_type="setting", target_id="business_hours",
               summary="Updated business hours", timezone=body.timezone)
     _put_setting(db, "business_hours", body.model_dump())
+    return body
+
+
+@router.get("/settings/sla-enabled", response_model=SlaEnabled, dependencies=[Depends(admin)])
+def get_sla_enabled(db: Session = Depends(get_db)):
+    return _get_setting(db, "sla_enabled", {"enabled": True})
+
+
+@router.put("/settings/sla-enabled", response_model=SlaEnabled)
+def put_sla_enabled(body: SlaEnabled, db: Session = Depends(get_db), actor: AppUser = Depends(admin)):
+    log_audit(db, actor, "settings.sla_enabled", target_type="setting", target_id="sla_enabled",
+              summary=f"{'Enabled' if body.enabled else 'Disabled'} SLA tracking", enabled=body.enabled)
+    _put_setting(db, "sla_enabled", {"enabled": body.enabled})
     return body
 
 
